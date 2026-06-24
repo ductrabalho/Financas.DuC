@@ -631,12 +631,19 @@ var ABA_LEMBRETES_FIXOS = 'LembretesFixos';
 var ABA_CATEGORIAS = 'Categorias';
 var ABA_CONFIGURACOES = 'Configuracoes';
 
+// Preenchido automaticamente quando este script é criado via provisionamento
+// automático (login com Google no app). Deixado vazio na cópia manual —
+// nesse caso, getSheet() cai para getActiveSpreadsheet(), que funciona
+// normalmente quando o script é vinculado pela própria interface do Sheets.
+var SPREADSHEET_ID = '';
+
 function getSheet(nome) {
-  return SpreadsheetApp.getActiveSpreadsheet().getSheetByName(nome);
+  var ss = SPREADSHEET_ID ? SpreadsheetApp.openById(SPREADSHEET_ID) : SpreadsheetApp.getActiveSpreadsheet();
+  return ss.getSheetByName(nome);
 }
 
 function inicializar() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = SPREADSHEET_ID ? SpreadsheetApp.openById(SPREADSHEET_ID) : SpreadsheetApp.getActiveSpreadsheet();
   criarAbaSeNaoExiste(ss, ABA_TRANSACOES, ['ID', 'Data', 'Descricao', 'Tipo', 'Periodicidade', 'CategoriaTema', 'Valor', 'Origem', 'MesRef']);
   criarAbaSeNaoExiste(ss, ABA_FIXOS, ['ID', 'Descricao', 'Tipo', 'Valor', 'DiaDoMes', 'Ativo', 'CategoriaTema']);
   criarAbaSeNaoExiste(ss, ABA_LEMBRETES, ['ID', 'Descricao', 'Tipo', 'Valor', 'Vencimento', 'Recorrente', 'Status', 'MesRef']);
@@ -1261,16 +1268,21 @@ async function rodarProvisionamento(){
     const scriptId = projeto.scriptId;
 
     atualizarStatusAuto('info', '3/4 — Enviando o código e publicando como app da web...');
+    const codigoComId = CODE_GS.replace("var SPREADSHEET_ID = '';", "var SPREADSHEET_ID = '" + spreadsheetId + "';");
     const manifest = {
       timeZone: 'America/Sao_Paulo',
       exceptionLogging: 'STACKDRIVER',
       runtimeVersion: 'V8',
+      oauthScopes: [
+        'https://www.googleapis.com/auth/spreadsheets',
+        'https://www.googleapis.com/auth/script.scriptapp'
+      ],
       webapp: { executeAs: 'USER_DEPLOYING', access: 'ANYONE_ANONYMOUS' }
     };
     await chamarGoogleAPI(`https://script.googleapis.com/v1/projects/${scriptId}/content`, {
       method: 'PUT',
       body: { files: [
-        { name: 'Code', type: 'SERVER_JS', source: CODE_GS },
+        { name: 'Code', type: 'SERVER_JS', source: codigoComId },
         { name: 'appsscript', type: 'JSON', source: JSON.stringify(manifest) }
       ]}
     });
