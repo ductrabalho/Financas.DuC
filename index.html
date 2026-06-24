@@ -1003,7 +1003,7 @@ function interpretarNotificacao(texto) {
   return { tipo: tipo, valor: valor, descricao: descricao };
 }
 
-
+function salvarConfiguracoes(d) {
   var sh = getSheet(ABA_CONFIGURACOES);
   var valores = sh.getDataRange().getValues();
   var chaves = { DiaReferencia: d.diaReferencia };
