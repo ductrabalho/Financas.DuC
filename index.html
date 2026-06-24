@@ -549,7 +549,8 @@ const GOOGLE_SCOPES = [
   'https://www.googleapis.com/auth/spreadsheets',
   'https://www.googleapis.com/auth/script.projects',
   'https://www.googleapis.com/auth/script.deployments',
-  'https://www.googleapis.com/auth/script.scriptapp'
+  'https://www.googleapis.com/auth/script.scriptapp',
+  'https://www.googleapis.com/auth/drive.metadata.readonly'
 ].join(' ');
 
 const diasReferenciaPredefinidos = [
@@ -1279,65 +1280,147 @@ function limparProvisionamentoPendente(){
   localStorage.removeItem(CHAVE_PENDENTE);
 }
 
+async function buscarPlanilhaExistente(){
+  // Busca no Drive uma planilha chamada "DuC Finanças" criada por este app
+  const r = await chamarGoogleAPI(
+    "https://www.googleapis.com/drive/v3/files?q=" +
+    encodeURIComponent("name='DuC Finanças' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false") +
+    "&fields=files(id,name)&spaces=drive"
+  );
+  return (r.files && r.files.length > 0) ? r.files[0].id : null;
+}
+
+async function buscarScriptVinculado(spreadsheetId){
+  // Busca no Drive o script vinculado à planilha (parentId = spreadsheetId)
+  const r = await chamarGoogleAPI(
+    "https://www.googleapis.com/drive/v3/files?q=" +
+    encodeURIComponent("name='DuC Finanças - Backend' and mimeType='application/vnd.google-apps.script' and trashed=false") +
+    "&fields=files(id,name)&spaces=drive"
+  );
+  if (!r.files || r.files.length === 0) return null;
+  // Verifica qual deles está vinculado à planilha certa
+  for (const f of r.files){
+    try {
+      const proj = await chamarGoogleAPI(`https://script.googleapis.com/v1/projects/${f.id}`);
+      if (proj.parentId === spreadsheetId) return f.id;
+    } catch(e){ /* sem permissão ou não é script — ignora */ }
+  }
+  return null;
+}
+
+async function buscarDeployAtivo(scriptId){
+  // Retorna a URL do primeiro deploy tipo WEBAPP ativo
+  try {
+    const r = await chamarGoogleAPI(`https://script.googleapis.com/v1/projects/${scriptId}/deployments`);
+    for (const d of (r.deployments || [])){
+      const ep = (d.entryPoints || []).find(e => e.webApp);
+      if (ep) return ep.webApp.url;
+    }
+  } catch(e){ /* sem permissão ainda */ }
+  return null;
+}
+
 async function rodarProvisionamento(){
   try {
-    const pendente = obterProvisionamentoPendente();
-    if (pendente && pendente.urlExec){
-      atualizarStatusAuto('info', 'Já existe uma planilha criada numa tentativa anterior — testando a conexão com ela...');
-      await aguardarConexaoEFinalizar(pendente.urlExec);
-      return;
+    let pendente = obterProvisionamentoPendente() || {};
+
+    // ── Etapa 0: verificar no Drive se já existe algo antes de criar qualquer coisa ──
+    atualizarStatusAuto('info', '0/4 — Verificando se já existe um banco de dados no seu Drive...');
+    if (!pendente.spreadsheetId){
+      const idExistente = await buscarPlanilhaExistente();
+      if (idExistente){
+        pendente.spreadsheetId = idExistente;
+        salvarProvisionamentoPendente(pendente);
+        atualizarStatusAuto('info', '0/4 — Planilha "DuC Finanças" já encontrada no Drive — reutilizando.');
+      }
     }
 
-    atualizarStatusAuto('info', '1/4 — Criando sua planilha no Google Sheets...');
-    const planilha = await chamarGoogleAPI('https://sheets.googleapis.com/v4/spreadsheets', {
-      method: 'POST',
-      body: { properties: { title: 'DuC Finanças' } }
-    });
-    const spreadsheetId = planilha.spreadsheetId;
+    // ── Etapa 1: criar planilha só se não existe ──
+    if (!pendente.spreadsheetId){
+      atualizarStatusAuto('info', '1/4 — Criando sua planilha no Google Sheets...');
+      const planilha = await chamarGoogleAPI('https://sheets.googleapis.com/v4/spreadsheets', {
+        method: 'POST',
+        body: { properties: { title: 'DuC Finanças' } }
+      });
+      pendente.spreadsheetId = planilha.spreadsheetId;
+      salvarProvisionamentoPendente(pendente);
+    } else {
+      atualizarStatusAuto('info', '1/4 — Planilha já existente, reutilizando...');
+    }
+    const spreadsheetId = pendente.spreadsheetId;
 
-    atualizarStatusAuto('info', '2/4 — Criando o script vinculado à planilha...');
-    const projeto = await chamarGoogleAPI('https://script.googleapis.com/v1/projects', {
-      method: 'POST',
-      body: { title: 'DuC Finanças - Backend', parentId: spreadsheetId }
-    });
-    const scriptId = projeto.scriptId;
+    // Verificar no Drive se já existe o script vinculado
+    if (!pendente.scriptId){
+      const scriptExistente = await buscarScriptVinculado(spreadsheetId);
+      if (scriptExistente){
+        pendente.scriptId = scriptExistente;
+        salvarProvisionamentoPendente(pendente);
+      }
+    }
 
-    atualizarStatusAuto('info', '3/4 — Enviando o código e publicando como app da web...');
-    const codigoComId = CODE_GS.replace("var SPREADSHEET_ID = '';", "var SPREADSHEET_ID = '" + spreadsheetId + "';");
-    const manifest = {
-      timeZone: 'America/Sao_Paulo',
-      exceptionLogging: 'STACKDRIVER',
-      runtimeVersion: 'V8',
-      oauthScopes: [
-        'https://www.googleapis.com/auth/spreadsheets',
-        'https://www.googleapis.com/auth/script.scriptapp'
-      ],
-      webapp: { executeAs: 'USER_DEPLOYING', access: 'ANYONE_ANONYMOUS' }
-    };
-    await chamarGoogleAPI(`https://script.googleapis.com/v1/projects/${scriptId}/content`, {
-      method: 'PUT',
-      body: { files: [
-        { name: 'Code', type: 'SERVER_JS', source: codigoComId },
-        { name: 'appsscript', type: 'JSON', source: JSON.stringify(manifest) }
-      ]}
-    });
+    // ── Etapa 2: criar script só se não existe ──
+    if (!pendente.scriptId){
+      atualizarStatusAuto('info', '2/4 — Criando o script vinculado à planilha...');
+      const projeto = await chamarGoogleAPI('https://script.googleapis.com/v1/projects', {
+        method: 'POST',
+        body: { title: 'DuC Finanças - Backend', parentId: spreadsheetId }
+      });
+      pendente.scriptId = projeto.scriptId;
+      salvarProvisionamentoPendente(pendente);
+    } else {
+      atualizarStatusAuto('info', '2/4 — Script já existente, reutilizando...');
+    }
+    const scriptId = pendente.scriptId;
 
-    const versao = await chamarGoogleAPI(`https://script.googleapis.com/v1/projects/${scriptId}/versions`, {
-      method: 'POST',
-      body: { description: 'Provisionamento automático' }
-    });
-    const deploy = await chamarGoogleAPI(`https://script.googleapis.com/v1/projects/${scriptId}/deployments`, {
-      method: 'POST',
-      body: { versionNumber: versao.versionNumber, manifestFileName: 'appsscript', description: 'Deploy automático' }
-    });
-    const webAppEntry = (deploy.entryPoints || []).find(ep => ep.webApp);
-    const urlExec = webAppEntry && webAppEntry.webApp && webAppEntry.webApp.url;
-    if (!urlExec) throw new Error('A implantação não retornou uma URL de app da web.');
+    // Verificar se já tem deploy ativo
+    if (!pendente.urlExec){
+      const urlExistente = await buscarDeployAtivo(scriptId);
+      if (urlExistente){
+        pendente.urlExec = urlExistente;
+        salvarProvisionamentoPendente(pendente);
+      }
+    }
 
-    salvarProvisionamentoPendente({ spreadsheetId, scriptId, urlExec });
+    // ── Etapa 3: deploy só se não existe ──
+    if (!pendente.urlExec){
+      atualizarStatusAuto('info', '3/4 — Enviando o código e publicando como app da web...');
+      const codigoComId = CODE_GS.replace("var SPREADSHEET_ID = '';", "var SPREADSHEET_ID = '" + spreadsheetId + "';");
+      const manifest = {
+        timeZone: 'America/Sao_Paulo',
+        exceptionLogging: 'STACKDRIVER',
+        runtimeVersion: 'V8',
+        oauthScopes: [
+          'https://www.googleapis.com/auth/spreadsheets',
+          'https://www.googleapis.com/auth/script.scriptapp'
+        ],
+        webapp: { executeAs: 'USER_DEPLOYING', access: 'ANYONE_ANONYMOUS' }
+      };
+      await chamarGoogleAPI(`https://script.googleapis.com/v1/projects/${scriptId}/content`, {
+        method: 'PUT',
+        body: { files: [
+          { name: 'Code', type: 'SERVER_JS', source: codigoComId },
+          { name: 'appsscript', type: 'JSON', source: JSON.stringify(manifest) }
+        ]}
+      });
+      const versao = await chamarGoogleAPI(`https://script.googleapis.com/v1/projects/${scriptId}/versions`, {
+        method: 'POST',
+        body: { description: 'Provisionamento automático' }
+      });
+      const deploy = await chamarGoogleAPI(`https://script.googleapis.com/v1/projects/${scriptId}/deployments`, {
+        method: 'POST',
+        body: { versionNumber: versao.versionNumber, manifestFileName: 'appsscript', description: 'Deploy automático' }
+      });
+      const webAppEntry = (deploy.entryPoints || []).find(ep => ep.webApp);
+      const urlExec = webAppEntry && webAppEntry.webApp && webAppEntry.webApp.url;
+      if (!urlExec) throw new Error('A implantação não retornou uma URL de app da web.');
+      pendente.urlExec = urlExec;
+      salvarProvisionamentoPendente(pendente);
+    } else {
+      atualizarStatusAuto('info', '3/4 — Deploy já existente, reutilizando...');
+    }
 
-    inputConfigUrl.value = urlExec;
-    await aguardarConexaoEFinalizar(urlExec);
+    inputConfigUrl.value = pendente.urlExec;
+    await aguardarConexaoEFinalizar(pendente.urlExec);
   } catch (err) {
     atualizarStatusAuto('erro', '❌ Algo deu errado: ' + err.message + '. Você pode tentar de novo ou usar a configuração manual abaixo.');
   } finally {
