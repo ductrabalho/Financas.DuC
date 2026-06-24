@@ -1167,6 +1167,53 @@ function mostrarSucessoComUrl(url){
   });
 }
 
+function mostrarAvisoComUrl(url){
+  elStatusAuto.classList.remove('oculto');
+  elStatusAuto.className = 'status-auto status-aviso';
+  elStatusAuto.innerHTML = `
+    ⚠️ A planilha e o script foram criados, mas a conexão ainda não respondeu (é normal levar um pouco na primeira vez).<br><br>
+    <span style="font-size:0.68rem; text-transform:uppercase; letter-spacing:0.04em; opacity:0.85;">URL da sua planilha</span>
+    <div style="display:flex; gap:8px; margin-top:6px;">
+      <input type="text" id="input-url-aviso" readonly value="${url}" style="margin-bottom:0; font-size:0.7rem; color:var(--text); background:var(--surface-2);" onclick="this.select()">
+      <button type="button" id="btn-tentar-novo-aviso" style="flex-shrink:0;">Tentar de novo</button>
+    </div>
+  `;
+  document.getElementById('btn-tentar-novo-aviso').addEventListener('click', async () => {
+    const btn = document.getElementById('btn-tentar-novo-aviso');
+    btn.disabled = true;
+    btn.textContent = 'Testando...';
+    const teste = await fetch(url + '?action=obterConfiguracoes').then(r => r.json()).catch(() => null);
+    if (teste && teste.ok){
+      API_URL = url;
+      localStorage.setItem('duc_financas_api_url', url);
+      elAviso.style.display = 'none';
+      mostrarSucessoComUrl(url);
+      await aposConectarAPI();
+    } else {
+      btn.disabled = false;
+      btn.textContent = 'Tentar de novo';
+    }
+  });
+}
+
+async function aguardarConexaoEFinalizar(url){
+  atualizarStatusAuto('info', '4/4 — Testando a conexão (pode levar até 1 minuto na primeira vez)...');
+  let teste = null;
+  for (let tentativa = 0; tentativa < 6 && !(teste && teste.ok); tentativa++){
+    await new Promise(r => setTimeout(r, 6000));
+    teste = await fetch(url + '?action=obterConfiguracoes').then(r => r.json()).catch(() => null);
+  }
+  if (teste && teste.ok){
+    API_URL = url;
+    localStorage.setItem('duc_financas_api_url', url);
+    elAviso.style.display = 'none';
+    mostrarSucessoComUrl(url);
+    await aposConectarAPI();
+  } else {
+    mostrarAvisoComUrl(url);
+  }
+}
+
 if (elBtnAuto) elBtnAuto.addEventListener('click', () => {
   if (!clientIdConfigurado()){
     alert('Este app ainda não tem um Client ID do Google configurado pelo desenvolvedor. Use a configuração manual abaixo.');
@@ -1240,23 +1287,8 @@ async function rodarProvisionamento(){
     const urlExec = webAppEntry && webAppEntry.webApp && webAppEntry.webApp.url;
     if (!urlExec) throw new Error('A implantação não retornou uma URL de app da web.');
 
-    atualizarStatusAuto('info', '4/4 — Testando a conexão (pode levar até 1 minuto na primeira vez)...');
-    let teste = null;
-    for (let tentativa = 0; tentativa < 6 && !(teste && teste.ok); tentativa++){
-      await new Promise(r => setTimeout(r, 6000));
-      teste = await fetch(urlExec + '?action=obterConfiguracoes').then(r => r.json()).catch(() => null);
-    }
-
     inputConfigUrl.value = urlExec;
-    if (teste && teste.ok){
-      API_URL = urlExec;
-      localStorage.setItem('duc_financas_api_url', urlExec);
-      elAviso.style.display = 'none';
-      mostrarSucessoComUrl(urlExec);
-      await aposConectarAPI();
-    } else {
-      atualizarStatusAuto('aviso', '⚠️ A planilha e o script foram criados, mas a conexão ainda não respondeu. A URL já foi preenchida abaixo — clique em "Salvar URL" para tentar de novo em um instante.');
-    }
+    await aguardarConexaoEFinalizar(urlExec);
   } catch (err) {
     atualizarStatusAuto('erro', '❌ Algo deu errado: ' + err.message + '. Você pode tentar de novo ou usar a configuração manual abaixo.');
   } finally {
