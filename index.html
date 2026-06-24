@@ -1193,6 +1193,7 @@ function mostrarAvisoComUrl(url){
     if (teste && teste.ok){
       API_URL = url;
       localStorage.setItem('duc_financas_api_url', url);
+      limparProvisionamentoPendente();
       elAviso.style.display = 'none';
       mostrarSucessoComUrl(url);
       await aposConectarAPI();
@@ -1213,6 +1214,7 @@ async function aguardarConexaoEFinalizar(url){
   if (teste && teste.ok){
     API_URL = url;
     localStorage.setItem('duc_financas_api_url', url);
+    limparProvisionamentoPendente();
     elAviso.style.display = 'none';
     mostrarSucessoComUrl(url);
     await aposConectarAPI();
@@ -1221,7 +1223,21 @@ async function aguardarConexaoEFinalizar(url){
   }
 }
 
-if (elBtnAuto) elBtnAuto.addEventListener('click', () => {
+if (elBtnAuto) elBtnAuto.addEventListener('click', async () => {
+  // Se já tem URL salva (configuração concluída), só testa a conexão — não cria nada
+  if (API_URL){
+    elBtnAuto.disabled = true;
+    atualizarStatusAuto('info', 'Banco de dados já configurado — testando a conexão...');
+    const teste = await fetch(API_URL + '?action=obterConfiguracoes').then(r => r.json()).catch(() => null);
+    if (teste && teste.ok){
+      atualizarStatusAuto('sucesso', '✅ Conexão ativa. Seu banco de dados já está funcionando.');
+    } else {
+      atualizarStatusAuto('aviso', '⚠️ A URL salva não respondeu. Verifique sua conexão ou reconfigure manualmente abaixo.');
+    }
+    elBtnAuto.disabled = false;
+    return;
+  }
+
   if (!clientIdConfigurado()){
     alert('Este app ainda não tem um Client ID do Google configurado pelo desenvolvedor. Use a configuração manual abaixo.');
     return;
@@ -1344,6 +1360,12 @@ document.getElementById('btn-toggle-manual').addEventListener('click', () => {
 // ---------- Modal de configurações ----------
 function abrirModalConfig(){
   inputConfigUrl.value = API_URL;
+  // Atualiza o rótulo do botão conforme o estado atual
+  if (API_URL){
+    elBtnAuto.textContent = '🔍 Verificar conexão com o banco de dados';
+  } else {
+    elBtnAuto.textContent = '🪄 Configurar automaticamente com Google';
+  }
   modalConfig.classList.add('aberto');
 }
 function fecharModalConfig(){ modalConfig.classList.remove('aberto'); }
