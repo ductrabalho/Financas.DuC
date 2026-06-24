@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Política de Privacidade — DuC Finanças</title>
+<style>
+  :root{
+    --bg: #14161a;
+    --surface: #1c1f24;
+    --line: #2d3138;
+    --text: #e9e6df;
+    --text-dim: #8f95a0;
+    --amber: #d9a13a;
+  }
+  *{ box-sizing: border-box; }
+  body{
+    margin:0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', system-ui, sans-serif;
+    line-height: 1.65;
+  }
+  .wrap{ max-width: 720px; margin: 0 auto; padding: 40px 20px 80px; }
+  h1{ font-size: 1.5rem; margin-bottom: 4px; }
+  .atualizado{ color: var(--text-dim); font-size: 0.85rem; margin-bottom: 32px; }
+  h2{ font-size: 1.05rem; color: var(--amber); margin-top: 32px; margin-bottom: 10px; }
+  p, li{ font-size: 0.92rem; color: var(--text); }
+  ul{ padding-left: 20px; }
+  li{ margin-bottom: 6px; }
+  code{ background: var(--surface); border: 1px solid var(--line); padding: 2px 6px; border-radius: 4px; font-size: 0.85em; }
+  a{ color: var(--amber); }
+  .destaque{ background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; margin: 16px 0; font-size: 0.9rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Política de Privacidade — DuC Finanças</h1>
+  <div class="atualizado">Última atualização: <span id="data-atual"></span></div>
+
+  <div class="destaque">
+    Resumo direto: o DuC Finanças não tem servidor próprio e não coleta, armazena ou recebe nenhum dado seu. Tudo o que você cria (planilha, transações, lembretes) fica exclusivamente na sua própria conta Google.
+  </div>
+
+  <h2>O que é o DuC Finanças</h2>
+  <p>DuC Finanças é uma ferramenta de controle financeiro pessoal. É uma única página web (HTML) que roda inteiramente no seu navegador e usa uma planilha do Google Sheets, na sua própria conta, como banco de dados.</p>
+
+  <h2>Quais dados acessamos</h2>
+  <p>Quando você usa o botão "Configurar automaticamente com Google", o app solicita sua autorização para, na sua própria conta Google:</p>
+  <ul>
+    <li><strong>Google Sheets:</strong> criar uma planilha nova para guardar suas transações, categorias e lembretes.</li>
+    <li><strong>Google Apps Script (projetos):</strong> criar um pequeno script vinculado a essa planilha, que funciona como a "API" que o app usa para ler e escrever dados nela.</li>
+    <li><strong>Google Apps Script (implantações):</strong> publicar esse script como um endereço web próprio, para que o app consiga se conectar a ele.</li>
+    <li><strong>Google Apps Script (execução):</strong> permitir que esse script configure, dentro da sua própria planilha, uma rotina automática mensal (para gerar transações fixas e lembretes recorrentes).</li>
+  </ul>
+
+  <h2>Onde seus dados ficam guardados</h2>
+  <p>Exclusivamente na sua conta Google — na planilha que o app cria para você. Não existe nenhum servidor nosso entre o app e o Google: a comunicação acontece direto entre o seu navegador, a sua planilha e o seu próprio script, usando a autorização que você concedeu diretamente ao Google.</p>
+  <p>O endereço (URL) dessa planilha/script fica salvo apenas no armazenamento local do seu navegador (<code>localStorage</code>), no seu próprio dispositivo. Nós nunca vemos, recebemos ou temos acesso a essa URL, nem ao conteúdo da sua planilha.</p>
+
+  <h2>Compartilhamento de dados</h2>
+  <p>Não compartilhamos, vendemos ou transferimos nenhum dado a terceiros, porque nunca temos acesso a nenhum dado seu em primeiro lugar.</p>
+
+  <h2>Como revogar o acesso</h2>
+  <p>A qualquer momento, você pode remover a autorização concedida ao app em <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener">myaccount.google.com/permissions</a>. Isso não apaga a planilha já criada (ela continua no seu Google Drive, sob seu controle total) — apenas revoga a permissão do app de criar novas planilhas/scripts no futuro.</p>
+
+  <h2>Contato</h2>
+  <p>Dúvidas sobre esta política: <a href="mailto:duc.trabalho@gmail.com">duc.trabalho@gmail.com</a></p>
+
+  <script>
+    document.getElementById('data-atual').textContent = new Date().toLocaleDateString('pt-BR');
+  </script>
+</div>
+</body>
+</html>
