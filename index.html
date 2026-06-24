@@ -1251,8 +1251,27 @@ async function chamarGoogleAPI(url, opts){
   return dados;
 }
 
+const CHAVE_PENDENTE = 'duc_financas_provisionamento_pendente';
+function obterProvisionamentoPendente(){
+  try { return JSON.parse(localStorage.getItem(CHAVE_PENDENTE) || 'null'); }
+  catch (e) { return null; }
+}
+function salvarProvisionamentoPendente(dados){
+  localStorage.setItem(CHAVE_PENDENTE, JSON.stringify(dados));
+}
+function limparProvisionamentoPendente(){
+  localStorage.removeItem(CHAVE_PENDENTE);
+}
+
 async function rodarProvisionamento(){
   try {
+    const pendente = obterProvisionamentoPendente();
+    if (pendente && pendente.urlExec){
+      atualizarStatusAuto('info', 'Já existe uma planilha criada numa tentativa anterior — testando a conexão com ela...');
+      await aguardarConexaoEFinalizar(pendente.urlExec);
+      return;
+    }
+
     atualizarStatusAuto('info', '1/4 — Criando sua planilha no Google Sheets...');
     const planilha = await chamarGoogleAPI('https://sheets.googleapis.com/v4/spreadsheets', {
       method: 'POST',
@@ -1298,6 +1317,8 @@ async function rodarProvisionamento(){
     const webAppEntry = (deploy.entryPoints || []).find(ep => ep.webApp);
     const urlExec = webAppEntry && webAppEntry.webApp && webAppEntry.webApp.url;
     if (!urlExec) throw new Error('A implantação não retornou uma URL de app da web.');
+
+    salvarProvisionamentoPendente({ spreadsheetId, scriptId, urlExec });
 
     inputConfigUrl.value = urlExec;
     await aguardarConexaoEFinalizar(urlExec);
