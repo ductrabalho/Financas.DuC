@@ -549,8 +549,7 @@ const GOOGLE_SCOPES = [
   'https://www.googleapis.com/auth/spreadsheets',
   'https://www.googleapis.com/auth/script.projects',
   'https://www.googleapis.com/auth/script.deployments',
-  'https://www.googleapis.com/auth/script.scriptapp',
-  'https://www.googleapis.com/auth/drive.metadata.readonly'
+  'https://www.googleapis.com/auth/script.scriptapp'
 ].join(' ');
 
 const diasReferenciaPredefinidos = [
@@ -1280,36 +1279,18 @@ function limparProvisionamentoPendente(){
   localStorage.removeItem(CHAVE_PENDENTE);
 }
 
-async function buscarPlanilhaExistente(){
-  // Busca no Drive uma planilha chamada "DuC Finanças" criada por este app
-  const r = await chamarGoogleAPI(
-    "https://www.googleapis.com/drive/v3/files?q=" +
-    encodeURIComponent("name='DuC Finanças' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false") +
-    "&fields=files(id,name)&spaces=drive"
-  );
-  return (r.files && r.files.length > 0) ? r.files[0].id : null;
-}
-
-async function buscarScriptVinculado(spreadsheetId){
-  // Busca no Drive o script vinculado à planilha (parentId = spreadsheetId)
-  const r = await chamarGoogleAPI(
-    "https://www.googleapis.com/drive/v3/files?q=" +
-    encodeURIComponent("name='DuC Finanças - Backend' and mimeType='application/vnd.google-apps.script' and trashed=false") +
-    "&fields=files(id,name)&spaces=drive"
-  );
-  if (!r.files || r.files.length === 0) return null;
-  // Verifica qual deles está vinculado à planilha certa
-  for (const f of r.files){
-    try {
-      const proj = await chamarGoogleAPI(`https://script.googleapis.com/v1/projects/${f.id}`);
-      if (proj.parentId === spreadsheetId) return f.id;
-    } catch(e){ /* sem permissão ou não é script — ignora */ }
-  }
-  return null;
+async function validarPlanilhaExistente(spreadsheetId){
+  // Tenta acessar a planilha diretamente pela Sheets API (já habilitada)
+  try {
+    const r = await chamarGoogleAPI(
+      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?fields=spreadsheetId`
+    );
+    return !!r.spreadsheetId;
+  } catch(e){ return false; }
 }
 
 async function buscarDeployAtivo(scriptId){
-  // Retorna a URL do primeiro deploy tipo WEBAPP ativo
+  // Retorna a URL do primeiro deploy WEBAPP ativo via Script API (já habilitada)
   try {
     const r = await chamarGoogleAPI(`https://script.googleapis.com/v1/projects/${scriptId}/deployments`);
     for (const d of (r.deployments || [])){
@@ -1324,14 +1305,17 @@ async function rodarProvisionamento(){
   try {
     let pendente = obterProvisionamentoPendente() || {};
 
-    // ── Etapa 0: verificar no Drive se já existe algo antes de criar qualquer coisa ──
-    atualizarStatusAuto('info', '0/4 — Verificando se já existe um banco de dados no seu Drive...');
-    if (!pendente.spreadsheetId){
-      const idExistente = await buscarPlanilhaExistente();
-      if (idExistente){
-        pendente.spreadsheetId = idExistente;
-        salvarProvisionamentoPendente(pendente);
-        atualizarStatusAuto('info', '0/4 — Planilha "DuC Finanças" já encontrada no Drive — reutilizando.');
+    // ── Etapa 0: validar via API se o que está salvo ainda existe ──
+    atualizarStatusAuto('info', '0/4 — Verificando se já existe um banco de dados configurado...');
+    if (pendente.spreadsheetId){
+      const ainda = await validarPlanilhaExistente(pendente.spreadsheetId);
+      if (!ainda){
+        // ID salvo não existe mais (deletado) — recomeça do zero
+        pendente = {};
+        limparProvisionamentoPendente();
+        atualizarStatusAuto('info', '0/4 — Banco anterior não encontrado. Criando novo...');
+      } else {
+        atualizarStatusAuto('info', '0/4 — Banco de dados já existente encontrado — reutilizando.');
       }
     }
 
@@ -1348,15 +1332,6 @@ async function rodarProvisionamento(){
       atualizarStatusAuto('info', '1/4 — Planilha já existente, reutilizando...');
     }
     const spreadsheetId = pendente.spreadsheetId;
-
-    // Verificar no Drive se já existe o script vinculado
-    if (!pendente.scriptId){
-      const scriptExistente = await buscarScriptVinculado(spreadsheetId);
-      if (scriptExistente){
-        pendente.scriptId = scriptExistente;
-        salvarProvisionamentoPendente(pendente);
-      }
-    }
 
     // ── Etapa 2: criar script só se não existe ──
     if (!pendente.scriptId){
