@@ -1355,9 +1355,11 @@ async function mostrarAvisoComUrl(url, el = elStatusAuto){ // ALTERADO
     mostrarSucessoComUrl(url, el);
     await aposConectarAPI();
   } else {
-    localStorage.setItem('duc_financas_auth_pendente', url);
-    const appUrl = encodeURIComponent(location.href.split('?')[0]);
-    location.href = url + '?continue=' + appUrl;
+    el.classList.remove('oculto');
+    el.className = 'status-auto status-aviso';
+    el.innerHTML = `\u26a0\ufe0f Autoriza\u00e7\u00e3o necess\u00e1ria. Clique abaixo para abrir a p\u00e1gina do Google em nova aba, aceite todos os acessos pedidos e volte aqui \u2014 a conex\u00e3o \u00e9 verificada automaticamente.<br><div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;"><button type="button" id="btn-abrir-autorizacao-manual">Abrir autoriza\u00e7\u00e3o</button></div>`; // ALTERADO
+    document.getElementById('btn-abrir-autorizacao-manual').addEventListener('click', () => { window.open(url, '_blank'); }); // ALTERADO
+    aguardarAutorizacaoEmSegundoPlano(url, el); // ALTERADO
   }
 }
 
