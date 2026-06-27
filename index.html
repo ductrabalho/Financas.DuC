@@ -2030,7 +2030,7 @@ async function rodarProvisionamento(spreadsheetIdExistente, statusFn = atualizar
       statusFn('info', '3/6 — Criando o script vinculado à planilha...'); // ALTERADO
       const projeto = await chamarGoogleAPI('https://script.googleapis.com/v1/projects', {
         method: 'POST',
-        body: { title: 'Finanças.DuC - Backend', parentId: spreadsheetId }
+        body: { title: 'Finanças.DuC', parentId: spreadsheetId }
       });
       pendente.scriptId = projeto.scriptId;
       salvarProvisionamentoPendente(pendente);
