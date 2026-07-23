@@ -1,7 +1,7 @@
 <!--
 ================================================================================
   Finanças.DuC — index.html
-  Versão atual: V00.035  (ver <title> na linha 6)
+  Versão atual: V00.036  (ver <title> na linha 6)
 
   🔗 LINK DO APP (GitHub Pages):
       https://ductrabalho.github.io/Financas.DuC/
@@ -169,7 +169,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Finanças.DuC V00.035</title>
+<title>Finanças.DuC V00.036</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://accounts.google.com/gsi/client" async defer onload="inicializarGoogleAuth()"></script>
@@ -1101,6 +1101,8 @@ const GOOGLE_CLIENT_ID = "14329074132-qb4tc07suauqffs40qai2t5a791pad1e.apps.goog
 // dele, então basta trocar a versão no <title> — nunca mais dessincroniza.
 const APP_VERSAO = (document.title.match(/V[\d.]+/) || ['V00.000'])[0];
 
+
+
 // Nome usado para a planilha (banco de dados) e o projeto Apps Script.
 // Trocar aqui muda em todos os lugares.
 const NOME_PLANILHA = 'Finanças.DuC-Banco_dados';
@@ -1360,25 +1362,33 @@ var URL_APP = 'https://ductrabalho.github.io/Financas.DuC/';
 
 function doGet(e) {
   // Chamada SEM 'action' = o usuário chegou aqui pelo redirecionamento do
-  // Google após autorizar o app. Em vez de devolver JSON de erro (que deixava
-  // a página travada), devolve uma página que volta sozinha para o app.
+  // Google após autorizar o app.
+  //
+  // IMPORTANTE: o HtmlService renderiza esta página dentro de um iframe de
+  // origem cruzada. O navegador PROÍBE que um iframe navegue a janela do topo
+  // por script (proteção anti-framebusting), então redirecionamento automático
+  // é impossível aqui — testado e confirmado. O único caminho permitido é um
+  // link com target="_top" clicado pelo usuário. Por isso a página abaixo
+  // mostra um botão grande em vez de tentar voltar sozinha.
   if (!e || !e.parameter || !e.parameter.action) {
-    // Aproveita a visita para inicializar as abas da planilha, mas nunca
-    // deixa um erro aqui impedir o retorno do usuário ao app.
     try { garantirInicializado(); } catch (err) {}
-    return HtmlService.createHtmlOutput(
+    var html =
       '<!DOCTYPE html><html><head><meta charset="utf-8">' +
-      '<meta name="viewport" content="width=device-width,initial-scale=1">' +
-      '<meta http-equiv="refresh" content="2;url=' + URL_APP + '">' +
-      '</head><body style="background:#14161a;color:#e9e6df;font-family:sans-serif;' +
-      'display:flex;align-items:center;justify-content:center;height:100vh;margin:0;' +
-      'text-align:center;padding:20px;box-sizing:border-box">' +
-      '<div><p style="font-size:1.1rem">✅ Autorização concluída.</p>' +
-      '<p style="opacity:.7">Voltando para o app...</p>' +
-      '<p><a href="' + URL_APP + '" style="color:#7aa2f7">Clique aqui se não voltar sozinho</a></p>' +
-      '</div><script>setTimeout(function(){location.replace(' +
-      JSON.stringify(URL_APP) + ');},600);<\/script></body></html>'
-    ).addMetaTag('viewport', 'width=device-width, initial-scale=1');
+      '<style>' +
+      'body{background:#14161a;color:#e9e6df;font-family:system-ui,sans-serif;' +
+      'display:flex;align-items:center;justify-content:center;min-height:95vh;' +
+      'margin:0;text-align:center;padding:24px;box-sizing:border-box}' +
+      '.ok{font-size:1.25rem;margin:0 0 6px}' +
+      '.sub{opacity:.65;font-size:.95rem;margin:0 0 26px;line-height:1.5}' +
+      '.btn{display:inline-block;background:#4a90e2;color:#fff;text-decoration:none;' +
+      'font-size:1.05rem;font-weight:600;padding:15px 30px;border-radius:10px}' +
+      '</style></head><body><div>' +
+      '<p class="ok">\u2705 Autoriza\u00e7\u00e3o conclu\u00edda</p>' +
+      '<p class="sub">Seu banco de dados est\u00e1 pronto.<br>Toque abaixo para voltar ao app.</p>' +
+      '<a class="btn" href="' + URL_APP + '" target="_top">Voltar para o Finan\u00e7as.DuC</a>' +
+      '</div></body></html>';
+    return HtmlService.createHtmlOutput(html)
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1');
   }
   return handleRequest(e);
 }
