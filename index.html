@@ -1,7 +1,11 @@
 <!--
 ================================================================================
   Finanças.DuC — index.html
-  Versão atual: V00.032  (ver <title> na linha 6)
+  Versão atual: V00.033  (ver <title> na linha 6)
+
+  🔗 LINK DO APP (GitHub Pages):
+      https://ductrabalho.github.io/Financas.DuC/
+      Repositório: github.com/ductrabalho/Financas.DuC
 
   ⚠️  REGRA DE EDIÇÃO: A cada alteração no código, INCREMENTAR o número
       de versão (ex.: V00.032 → V00.033) em:
@@ -164,7 +168,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Finanças.DuC V00.032</title>
+<title>Finanças.DuC V00.033</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://accounts.google.com/gsi/client" async defer onload="inicializarGoogleAuth()"></script>
@@ -1203,7 +1207,7 @@ async function chamarAPI(params, metodo, textoLoading){
 
 // ---------- Código do backend (pra copiar nas configurações) ----------
 const CODE_GS = `/**
- * CONTROLE FINANCEIRO — Backend (Google Apps Script) — v3
+ * CONTROLE FINANCEIRO (Google Apps Script) — v3
  * -----------------------------------------------------------
  * Abas: Transacoes, Fixos, Lembretes, LembretesFixos, Categorias, Configuracoes
  *
@@ -1342,7 +1346,32 @@ function garantirInicializado() {
 
 // ---------- Roteamento da API ----------
 
-function doGet(e) { return handleRequest(e); }
+var URL_APP = 'https://ductrabalho.github.io/Financas.DuC/';
+
+function doGet(e) {
+  // Chamada SEM 'action' = o usuário chegou aqui pelo redirecionamento do
+  // Google após autorizar o app. Em vez de devolver JSON de erro (que deixava
+  // a página travada), devolve uma página que volta sozinha para o app.
+  if (!e || !e.parameter || !e.parameter.action) {
+    // Aproveita a visita para inicializar as abas da planilha, mas nunca
+    // deixa um erro aqui impedir o retorno do usuário ao app.
+    try { garantirInicializado(); } catch (err) {}
+    return HtmlService.createHtmlOutput(
+      '<!DOCTYPE html><html><head><meta charset="utf-8">' +
+      '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+      '<meta http-equiv="refresh" content="2;url=' + URL_APP + '">' +
+      '</head><body style="background:#14161a;color:#e9e6df;font-family:sans-serif;' +
+      'display:flex;align-items:center;justify-content:center;height:100vh;margin:0;' +
+      'text-align:center;padding:20px;box-sizing:border-box">' +
+      '<div><p style="font-size:1.1rem">✅ Autorização concluída.</p>' +
+      '<p style="opacity:.7">Voltando para o app...</p>' +
+      '<p><a href="' + URL_APP + '" style="color:#7aa2f7">Clique aqui se não voltar sozinho</a></p>' +
+      '</div><script>setTimeout(function(){location.replace(' +
+      JSON.stringify(URL_APP) + ');},600);<\/script></body></html>'
+    ).addMetaTag('viewport', 'width=device-width, initial-scale=1');
+  }
+  return handleRequest(e);
+}
 function doPost(e) { return handleRequest(e); }
 
 function handleRequest(e) {
@@ -1803,15 +1832,20 @@ async function mostrarAvisoComUrl(url, el = elStatusAuto){ // ALTERADO
   } else {
     el.classList.remove('oculto');
     el.className = 'status-auto status-aviso';
-    el.innerHTML = `\u26a0\ufe0f Autoriza\u00e7\u00e3o necess\u00e1ria. Clique abaixo para abrir a p\u00e1gina do Google em nova aba, aceite todos os acessos pedidos e volte aqui \u2014 a conex\u00e3o \u00e9 verificada automaticamente.<br><div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;"><button type="button" id="btn-abrir-autorizacao-manual">Abrir autoriza\u00e7\u00e3o</button></div>`; // ALTERADO
-    document.getElementById('btn-abrir-autorizacao-manual').addEventListener('click', () => { window.__abaAutorizacaoDuC = window.open(url, 'ducAuth', 'width=600,height=700'); }); // ALTERADO
-    aguardarAutorizacaoEmSegundoPlano(url, el); // ALTERADO
+    el.innerHTML = `\u26a0\ufe0f Autoriza\u00e7\u00e3o necess\u00e1ria. Clique abaixo para abrir a p\u00e1gina do Google, aceite TODOS os acessos pedidos \u2014 voc\u00ea volta pra c\u00e1 automaticamente.<br><div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;"><button type="button" id="btn-abrir-autorizacao-manual">Abrir autoriza\u00e7\u00e3o</button></div>`; // ALTERADO
+    document.getElementById('btn-abrir-autorizacao-manual').addEventListener('click', () => {
+      // Mesma aba: evita popup bloqueado e abas órfãs no mobile.
+      localStorage.setItem('duc_financas_auth_pendente', '1');
+      location.href = url;
+    });
   }
 }
 
 // Fica testando a conexão em segundo plano enquanto o usuário resolve a
 // autorização na outra aba. Quando a aba volta a ficar visível (ou a cada
 // poucos segundos) testa de novo; ao dar certo, segue pro passo 6 sozinho.
+// ⚠️ OBSOLETA desde V00.033 — era usada no fluxo de popup/aba nova.
+// Mantida apenas por segurança; o fluxo atual usa aba única (location.href).
 function aguardarAutorizacaoEmSegundoPlano(url, el = elStatusAuto){
   if (window.__aguardandoAutorizacaoDuC) return; // já tem um monitor rodando
   window.__aguardandoAutorizacaoDuC = true;
@@ -1871,43 +1905,25 @@ function aguardarAutorizacaoEmSegundoPlano(url, el = elStatusAuto){
 
 async function aguardarConexaoEFinalizar(url, statusFn = atualizarStatusAuto, el = elStatusAuto){ // ALTERADO
   // ── Etapa 5: abrir a página de autorização do Google e esperar o aceite ──
-  statusFn('info', '5/6 — Abrindo a página de autorização. Aceite TODOS os acessos que o Google pedir e depois volte pra esta aba...');
-  const abaAutorizacao = window.open(url, 'ducAuth', 'width=600,height=700');
-  window.__abaAutorizacaoDuC = abaAutorizacao;
-  if (!abaAutorizacao){
-    // Popup bloqueado pelo navegador: mostra o aviso com botão "Continuar" (gesto do usuário)
-    // e deixa o monitor em segundo plano finalizar quando a autorização for concluída.
-    mostrarAvisoComUrl(url, el); // ALTERADO
-    return;
-  }
-
-  statusFn('info', '6/6 — Testando a conexão (pode levar até 1 minuto na primeira vez)...');
-  let teste = null;
-  for (let tentativa = 0; tentativa < 6 && !(teste && teste.ok); tentativa++){
-    await new Promise(r => setTimeout(r, 6000));
-    teste = await fetch(url + '?action=obterConfiguracoes').then(r => r.json()).catch(() => null);
-  }
-  if (teste && teste.ok){
-    // ── Fechar a aba de autorização automaticamente ──
-    // Navega a aba para uma data URL que executa window.close() — o método
-    // mais confiável no mobile Chrome mesmo com origem diferente
-    try {
-      if (abaAutorizacao && !abaAutorizacao.closed){
-        abaAutorizacao.location.href = 'data:text/html,<scr'+'ipt>window.close()<\/scr'+'ipt>';
-        setTimeout(()=>{ try{ abaAutorizacao.close(); }catch(e){} }, 800);
-      }
-    } catch(e){
-      try { window.open('about:blank','ducAuth').close(); } catch(e2){}
-    }
-    window.__abaAutorizacaoDuC = null;
+  // ── Primeiro testa: se já está autorizado, nem precisa redirecionar ──
+  const testePrevio = await fetch(url + '?action=obterConfiguracoes').then(r => r.json()).catch(() => null);
+  if (testePrevio && testePrevio.ok){
     API_URL = url;
     localStorage.setItem('duc_financas_api_url', url);
     limparProvisionamentoPendente();
-    mostrarSucessoComUrl(url, el); // ALTERADO
+    mostrarSucessoComUrl(url, el);
     await aposConectarAPI();
-  } else {
-    mostrarAvisoComUrl(url, el); // ALTERADO
+    return;
   }
+
+  // ── Ainda não autorizado: navega a PRÓPRIA aba para a autorização ──
+  // Usar a mesma aba (em vez de window.open) evita popup bloqueado e abas
+  // órfãs que não podem ser fechadas por script — problema comum no mobile.
+  // O estado fica salvo no localStorage e o fluxo é retomado em iniciar().
+  statusFn('info', '5/6 — Abrindo a autorização do Google. Aceite TODOS os acessos pedidos — você volta pra cá automaticamente.');
+  localStorage.setItem('duc_financas_auth_pendente', '1');
+  await new Promise(r => setTimeout(r, 1200)); // deixa o usuário ler o aviso
+  location.href = url;
 }
 
 if (elBtnAuto) elBtnAuto.addEventListener('click', async () => {
@@ -2736,14 +2752,35 @@ async function aposConectarAPI(){
   renderDiaReferencia();
   calcularPeriodoPadrao();
 
-  // Retorno após redirecionamento de autorização
+  // ── Retorno após o redirecionamento de autorização (mesma aba) ──
+  // Não chama aguardarConexaoEFinalizar aqui: aquela função redireciona de
+  // novo se o teste falhar, o que causaria loop. Aqui testamos com várias
+  // tentativas (o Apps Script demora na 1ª chamada) e só então decidimos.
   const authPendente = localStorage.getItem('duc_financas_auth_pendente');
   if (authPendente){
     localStorage.removeItem('duc_financas_auth_pendente');
     mostrarTela(elTelaEntrada);
     const pendente = obterProvisionamentoPendente();
     if (pendente && pendente.urlExec){
-      await aguardarConexaoEFinalizar(pendente.urlExec, atualizarStatusEntrada, elStatusEntrada);
+      const url = pendente.urlExec;
+      atualizarStatusEntrada('info', '6/6 — Finalizando a conexão (pode levar até 1 minuto na primeira vez)...');
+      let teste = null;
+      for (let tentativa = 0; tentativa < 8 && !(teste && teste.ok); tentativa++){
+        teste = await fetch(url + '?action=obterConfiguracoes').then(r => r.json()).catch(() => null);
+        if (teste && teste.ok) break;
+        await new Promise(r => setTimeout(r, 5000));
+      }
+      if (teste && teste.ok){
+        API_URL = url;
+        localStorage.setItem('duc_financas_api_url', url);
+        limparProvisionamentoPendente();
+        mostrarSucessoComUrl(url, elStatusEntrada);
+        await aposConectarAPI();
+      } else {
+        // Não redireciona automaticamente de novo — evita loop.
+        // Oferece o botão para o usuário tentar de novo por gesto próprio.
+        mostrarAvisoComUrl(url, elStatusEntrada);
+      }
     }
     return;
   }
