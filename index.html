@@ -1,7 +1,7 @@
 <!--
 ================================================================================
   Finanças.DuC — index.html
-  Versão atual: V00.038  (ver <title> na linha 6)
+  Versão atual: V00.039  (ver <title> na linha 6)
 
   🔗 LINK DO APP (GitHub Pages):
       https://ductrabalho.github.io/Financas.DuC/
@@ -169,7 +169,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Finanças.DuC V00.038</title>
+<title>Finanças.DuC V00.039</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://accounts.google.com/gsi/client" async defer onload="inicializarGoogleAuth()"></script>
@@ -728,31 +728,59 @@
      Aparece enquanto o app carrega de verdade e sai assim que estiver
      pronto. Não atrasa nada de propósito: se o carregamento for rápido,
      a splash apenas pisca; se for lento (ex.: retorno da autorização),
-     ela preenche a espera. */
+     ela preenche a espera.
+
+     ALINHAMENTO: a logo aqui fica na MESMA posição e tamanho da logo da
+     tela "Tudo pronto!" gerada pelo doGet() no Apps Script. Assim, ao vir
+     daquela tela, a logo não "salta" — parece que continuou parada.
+     Medidas espelhadas: width min(72vw,290px), centro vertical em 317px
+     numa viewport de 844px, ou seja ~37.6% da altura.
+
+     DOIS MODOS:
+       • Entrada direta  → classe .com-fade  : logo entra esmaecendo
+       • Vindo da imagem 1 → classe .sem-fade : logo já começa visível
+     Em ambos a saída é esmaecendo (.saindo). */
   #splash{
     position: fixed; inset: 0; z-index: 9999;
     background: var(--bg);
     display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    gap: 22px;
+    align-items: center;
+    /* Posiciona o bloco para que a logo caia no mesmo ponto da tela do
+       Apps Script (centro da logo a ~37.6% da altura da viewport). */
+    justify-content: flex-start;
+    padding-top: calc(37.6vh - 27px);
+    gap: 26px;
     transition: opacity .45s ease;
   }
   #splash.saindo{ opacity: 0; pointer-events: none; }
   #splash img{
-    width: min(70vw, 300px);
+    width: min(72vw, 290px);
     height: auto;
-    opacity: 0;
-    transform: scale(.94);
-    animation: splashLogo .75s cubic-bezier(.2,.7,.3,1) forwards;
+    display: block;
   }
   #splash .splash-txt{
     font-size: .95rem;
     letter-spacing: .16em;
     text-transform: uppercase;
     color: var(--text-dim);
+  }
+
+  /* Modo 1 — entrada direta: entra esmaecendo */
+  #splash.com-fade img{
+    opacity: 0;
+    transform: scale(.94);
+    animation: splashLogo .75s cubic-bezier(.2,.7,.3,1) forwards;
+  }
+  #splash.com-fade .splash-txt{
     opacity: 0;
     animation: splashTxt .6s ease .35s forwards;
   }
+
+  /* Modo 2 — vindo da tela de autorização: já começa visível,
+     para dar a impressão de que a logo nunca saiu da tela. */
+  #splash.sem-fade img{ opacity: 1; transform: none; }
+  #splash.sem-fade .splash-txt{ opacity: .85; }
+
   @keyframes splashLogo{
     to{ opacity: 1; transform: scale(1); }
   }
@@ -761,7 +789,9 @@
   }
   /* Respeita quem pediu menos animação no sistema */
   @media (prefers-reduced-motion: reduce){
-    #splash img, #splash .splash-txt{ animation-duration: .01s; opacity: 1; }
+    #splash.com-fade img, #splash.com-fade .splash-txt{
+      animation-duration: .01s; opacity: 1;
+    }
   }
 
   /* Estado de carregamento do login */
@@ -812,6 +842,23 @@
   <img src="https://ductrabalho.github.io/Financas.DuC/logo.png" alt="Finanças.DuC">
   <div class="splash-txt">Entrando</div>
 </div>
+<script>
+  /* Decide o modo da splash ANTES da primeira pintura, para não haver
+     nenhum instante de fade indevido:
+       • Se o usuário está voltando da tela "Tudo pronto!" do Apps Script,
+         a logo já estava na tela — então entra SEM esmaecer (.sem-fade).
+       • Caso contrário é entrada direta — entra esmaecendo (.com-fade).
+     A saída é sempre esmaecendo, nos dois casos. */
+  (function definirModoSplash(){
+    var el = document.getElementById('splash');
+    if (!el) return;
+    var voltandoDaAutorizacao = false;
+    try {
+      voltandoDaAutorizacao = localStorage.getItem('duc_financas_auth_pendente') === '1';
+    } catch (e) {}
+    el.classList.add(voltandoDaAutorizacao ? 'sem-fade' : 'com-fade');
+  })();
+</script>
 
 <div class="loading-overlay" id="loading-overlay">
   <div class="loading-caixa">
@@ -2935,11 +2982,25 @@ async function checarAtualizacao(){
 const SPLASH_INICIO = Date.now();
 const SPLASH_MIN_MS = 550;
 let splashJaSaiu = false;
-function esconderSplash(){
+
+// Promessa que resolve quando a imagem da logo terminou de carregar.
+// Sem isso a splash pode sair antes da logo aparecer, causando um piscar
+// de tela vazia em conexões lentas.
+const splashLogoPronta = new Promise((resolver) => {
+  const img = document.querySelector('#splash img');
+  if (!img) { resolver(); return; }
+  if (img.complete && img.naturalWidth > 0) { resolver(); return; }
+  img.addEventListener('load', resolver, { once: true });
+  img.addEventListener('error', resolver, { once: true }); // não travar se falhar
+  setTimeout(resolver, 2500); // teto de espera
+});
+
+async function esconderSplash(){
   if (splashJaSaiu) return;
   splashJaSaiu = true;
   const el = document.getElementById('splash');
   if (!el) return;
+  await splashLogoPronta;
   const decorrido = Date.now() - SPLASH_INICIO;
   const esperar = Math.max(0, SPLASH_MIN_MS - decorrido);
   setTimeout(() => {
