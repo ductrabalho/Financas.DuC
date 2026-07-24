@@ -206,7 +206,6 @@
   h1 .tick{ color: var(--amber); }
   .h1-financas{ display:flex; align-items:baseline; gap: 0px; }
   .h1-nome{ color: var(--text); }
-  .h1-logo{ height: 0.72em; width: auto; display:block; }
   .h1-versao{ font-family: 'JetBrains Mono', monospace; font-size: 0.95rem; font-weight: 500; color: #c4c8cf; letter-spacing: 0.04em; align-self: flex-end; padding-bottom: 6px; margin-left: -10px; }
   .subtitulo{ color: var(--text-dim); font-size: 0.85rem; margin-top: -2px; margin-left: 4px; }
 
@@ -606,6 +605,8 @@
     justify-content: center;
     padding: 0 24px 140px;
     position: relative;
+    z-index: 10000; /* acima do #splash (9999): aparece por cima dele,
+                        sem precisar que a splash saia da tela */
   }
   #tela-entrada .bg-orb{
     position: fixed;
@@ -620,12 +621,53 @@
   #tela-entrada .logo-grande{
     text-align: center;
     line-height: 1;
+    /* Reserva o mesmo espaço que a logo ocupava quando estava aqui,
+       usando a proporção real da imagem (760×149px ≈ 5.1:1), mais uma
+       margem extra ajustada visualmente pelo usuário, para que o
+       restante da tela (subtítulo, tag, card) fique na posição exata
+       que ele aprovou. */
+    width: min(340px, 90%);
+    aspect-ratio: 5.1 / 1;
+    margin: 0 auto 82px;
   }
   #tela-entrada .logo-grande img{
     max-width: 340px;
     width: 90%;
     display: block;
     margin: 0 auto;
+  }
+  #tela-entrada .logo-subtitulo,
+  #tela-entrada .logo-tag,
+  #tela-entrada .action-card,
+  #tela-entrada .action-card #login-default-content{
+    opacity: 0;
+    transform: translateY(8px);
+    /* Todos os elementos têm a MESMA duração de esmaecimento (.6s). O que
+       muda entre eles é só o delay, escalonado em passos IGUAIS (.15s),
+       de modo que cada um começa a aparecer .15s depois do início do
+       fade-in do anterior — não depois dele terminar. */
+    transition: opacity .6s ease, transform .6s ease;
+  }
+  /* O conteúdo do card (texto + botão) some por padrão mesmo antes do
+     card "revelado" aparecer, para poder surgir DEPOIS do quadrado
+     vazio do card, não junto com ele. */
+  #tela-entrada .action-card #login-default-content{ opacity: 0; }
+
+  #tela-entrada.revelada .logo-subtitulo{
+    opacity: 1; transform: none;
+    transition-delay: .15s; /* .15s depois do início do fade-in da logo */
+  }
+  #tela-entrada.revelada .logo-tag{
+    opacity: 1; transform: none;
+    transition-delay: .30s; /* .15s depois do início do fade-in do subtítulo */
+  }
+  #tela-entrada.revelada .action-card{
+    opacity: 1; transform: none;
+    transition-delay: .45s; /* .15s depois do início do fade-in da tag */
+  }
+  #tela-entrada.revelada .action-card #login-default-content{
+    opacity: 1; transform: none;
+    transition-delay: .60s; /* .15s depois do início do fade-in do card */
   }
   #tela-entrada .logo-subtitulo{
     color: var(--text-dim);
@@ -725,38 +767,26 @@
   }
 
   /* ── SPLASH DE ABERTURA ─────────────────────────────────────────
-     Aparece enquanto o app carrega de verdade e sai assim que estiver
-     pronto. Não atrasa nada de propósito: se o carregamento for rápido,
-     a splash apenas pisca; se for lento (ex.: retorno da autorização),
-     ela preenche a espera.
+     Fica visível o tempo todo (não esmaece nem é removida). A tela de
+     login aparece por cima dela, com fade-in próprio, dando a impressão
+     de que a logo nunca saiu do lugar.
 
-     ALINHAMENTO: a logo aqui fica na MESMA posição e tamanho da logo da
-     tela "Tudo pronto!" gerada pelo doGet() no Apps Script. Assim, ao vir
-     daquela tela, a logo não "salta" — parece que continuou parada.
-     Medidas espelhadas: width min(72vw,290px), centro vertical em 317px
-     numa viewport de 844px, ou seja ~37.6% da altura.
-
-     DOIS MODOS:
-       • Entrada direta  → classe .com-fade  : logo entra esmaecendo
-       • Vindo da imagem 1 → classe .sem-fade : logo já começa visível
-     Em ambos a saída é esmaecendo (.saindo). */
+     DOIS MODOS de entrada da logo:
+       • Entrada direta      → classe .com-fade : logo entra esmaecendo
+       • Vindo da autorização → classe .sem-fade : logo já começa visível */
   #splash{
     position: fixed; inset: 0; z-index: 9999;
     background: var(--bg);
     display: flex; flex-direction: column;
     align-items: center;
-    /* justify-content e padding-top são definidos via JS (ver script
-       logo abaixo do #splash), medindo a posição real da logo na tela
-       de login ANTES da primeira pintura. Isso garante que a logo caia
-       no mesmo pixel em qualquer resolução — um valor fixo em vh não
-       funciona porque a altura do card de login abaixo muda conforme a
-       largura da tela. */
+    /* justify-content e padding-top são ajustados via JS (posicionarLogoSplash,
+       perto do fim do arquivo), medindo a posição real do subtítulo da
+       tela de login, para a logo ficar sempre um pouco acima dele —
+       em qualquer resolução, sem depender de um valor fixo chutado. */
     justify-content: flex-start;
-    padding-top: 0;
+    padding-top: 20vh;
     gap: 26px;
-    transition: opacity .45s ease;
   }
-  #splash.saindo{ opacity: 0; pointer-events: none; }
   #splash img, #tela-entrada .logo-grande img{
     max-width: 340px;
     width: 90%;
@@ -764,38 +794,26 @@
     display: block;
     margin: 0 auto;
   }
-  #splash .splash-txt{
-    font-size: .95rem;
-    letter-spacing: .16em;
-    text-transform: uppercase;
-    color: var(--text-dim);
-  }
 
-  /* Modo 1 — entrada direta: entra esmaecendo */
+  /* Modo 1 — entrada direta: logo entra esmaecendo, vindo de um pouco
+     mais abaixo (5mm) e subindo enquanto aparece. O atraso inicial (.6s)
+     é o tempo em preto total antes da logo começar a aparecer. */
   #splash.com-fade img{
     opacity: 0;
-    transform: scale(.94);
-    animation: splashLogo .75s cubic-bezier(.2,.7,.3,1) forwards;
-  }
-  #splash.com-fade .splash-txt{
-    opacity: 0;
-    animation: splashTxt .6s ease .35s forwards;
+    transform: scale(.94) translateY(5mm);
+    animation: splashLogo .75s cubic-bezier(.2,.7,.3,1) .6s forwards;
   }
 
   /* Modo 2 — vindo da tela de autorização: já começa visível,
      para dar a impressão de que a logo nunca saiu da tela. */
   #splash.sem-fade img{ opacity: 1; transform: none; }
-  #splash.sem-fade .splash-txt{ opacity: .85; }
 
   @keyframes splashLogo{
-    to{ opacity: 1; transform: scale(1); }
-  }
-  @keyframes splashTxt{
-    to{ opacity: .85; }
+    to{ opacity: 1; transform: scale(1) translateY(0); }
   }
   /* Respeita quem pediu menos animação no sistema */
   @media (prefers-reduced-motion: reduce){
-    #splash.com-fade img, #splash.com-fade .splash-txt{
+    #splash.com-fade img{
       animation-duration: .01s; opacity: 1;
     }
   }
@@ -845,8 +863,7 @@
 
 <!-- Splash de abertura: some assim que o app termina de carregar -->
 <div id="splash">
-  <img src="https://ductrabalho.github.io/Financas.DuC/logo.png" alt="Finanças.DuC">
-  <div class="splash-txt">Entrando</div>
+  <img src="logo.png" alt="Finanças.DuC">
 </div>
 <script>
   /* Decide o modo da splash ANTES da primeira pintura, para não haver
@@ -1001,30 +1018,24 @@
   </div>
 
   <script>
-    /* Faz a logo da splash cair exatamente no mesmo pixel da logo da
-       tela de login (#tela-entrada .logo-grande img), em QUALQUER
-       resolução — em vez de um valor fixo em vh, que desalinha quando
-       a largura da tela muda a altura do card abaixo.
-
-       #tela-entrada já é display:flex por padrão (não tem a classe
-       .oculto) e está renderizada por baixo do #splash (que é
-       position:fixed cobrindo a tela inteira) — então sua logo já
-       está no lugar final antes mesmo da splash aparecer. Basta medir
-       a posição real dela e aplicar como padding-top da splash.
+    /* Posiciona a logo da splash um pouco ACIMA do subtítulo "Controle
+       de pagamentos e cobranças" da tela de login — em QUALQUER
+       resolução, medindo a posição real do subtítulo (que já está no
+       DOM, mesmo antes de aparecer) em vez de usar um valor fixo
+       chutado, que erraria em telas de tamanhos diferentes.
 
        IMPORTANTE: a fonte Fraunces carrega de forma assíncrona
        (Google Fonts, display=swap). Medir antes dela carregar dá a
-       métrica da fonte de fallback, que tem altura de linha diferente
-       e desalinha a logo depois que a Fraunces troca. Por isso
-       aguarda-se document.fonts.ready antes de medir — na maioria das
-       vezes a fonte já está pronta (cache do navegador) e a splash
-       aparece direto na posição certa, sem salto perceptível. */
+       métrica da fonte de fallback, que tem altura de linha diferente.
+       Por isso aguarda-se document.fonts.ready antes de medir. */
+    const MARGEM_LOGO_ACIMA_SUBTITULO = 90; // px de espaço entre a base da logo e o subtítulo
     function posicionarLogoSplash(){
       var splash = document.getElementById('splash');
-      var imgLogin = document.querySelector('#tela-entrada .logo-grande img');
-      if (!splash || !imgLogin) return;
-      var topoLogo = imgLogin.getBoundingClientRect().top;
-      splash.style.paddingTop = Math.max(0, topoLogo) + 'px';
+      var subtitulo = document.querySelector('#tela-entrada .logo-subtitulo');
+      if (!splash || !subtitulo) return;
+      var topoSubtitulo = subtitulo.getBoundingClientRect().top;
+      var padding = topoSubtitulo - MARGEM_LOGO_ACIMA_SUBTITULO;
+      splash.style.paddingTop = Math.max(0, padding) + 'px';
     }
     if (document.fonts && document.fonts.ready) {
       document.fonts.ready.then(posicionarLogoSplash);
@@ -2325,7 +2336,11 @@ function mostrarTela(tela){
    imagem só, o tempo todo, do início ao fim da jornada. */
 function moverLogoParaHeader(){
   try {
-    const img = document.querySelector('#tela-entrada .logo-grande img');
+    // A logo vive dentro do #splash (que hoje permanece na tela, não é
+    // mais removido nem move a imagem para a tela de login) — por isso
+    // busca-se ela ali, e não em '#tela-entrada .logo-grande img' como
+    // antes.
+    const img = document.querySelector('#splash img');
     const destino = document.querySelector('#app-conectado .logo');
     if (!img || !destino) return;
 
@@ -3068,12 +3083,9 @@ async function checarAtualizacao(){
 }
 
 // ── SPLASH: esconder ────────────────────────────────────────────
-// Chamada quando o app está pronto. Garante um tempo mínimo visível
-// (para não dar um "flash" desagradável) mas nunca atrasa além disso.
+// A tela de login aparece por cima do splash sincronizada com a
+// animação de entrada da logo (ver INICIO_CASCATA_MS mais abaixo).
 const SPLASH_INICIO = Date.now();
-const SPLASH_MIN_MS = 800; // > duração da animação de entrada (.75s), para o
-                            // FLIP medir a logo já no estado final (scale(1)),
-                            // não no meio da animação de entrada
 let splashJaSaiu = false;
 
 // Promessa que resolve quando a imagem da logo terminou de carregar.
@@ -3088,6 +3100,15 @@ const splashLogoPronta = new Promise((resolver) => {
   setTimeout(resolver, 2500); // teto de espera
 });
 
+// A cascata de entrada (subtítulo → tag → card → conteúdo do card) é
+// disparada (via classe .revelada) no exato instante em que a logo
+// começa a esmaecer para dentro (mesmo momento do delay da animação
+// splashLogo, hoje .6s). A partir daí, cada elemento tem seu próprio
+// transition-delay em passos iguais de .15s, então o subtítulo começa
+// .15s depois do INÍCIO do fade-in da logo — não depois dela terminar —
+// e assim por diante, no mesmo ritmo, até o conteúdo do card.
+const INICIO_CASCATA_MS = 600;
+
 async function esconderSplash(){
   if (splashJaSaiu) return;
   splashJaSaiu = true;
@@ -3095,12 +3116,16 @@ async function esconderSplash(){
   if (!el) return;
   await splashLogoPronta;
   const decorrido = Date.now() - SPLASH_INICIO;
-  const esperar = Math.max(0, SPLASH_MIN_MS - decorrido);
+
+  const tempoRevelarLogin = el.classList.contains('sem-fade')
+    ? 0
+    : Math.max(0, INICIO_CASCATA_MS - decorrido);
   setTimeout(() => {
-    moverLogoParaLogin(el);
-    el.classList.add('saindo');
-    setTimeout(() => { try { el.remove(); } catch(e){} }, 500);
-  }, esperar);
+    // O splash permanece na tela (não esmaece nem é removido) — a tela
+    // de login aparece por cima dele, com sua própria animação de
+    // entrada, dando a impressão de continuidade com a logo do splash.
+    document.getElementById('tela-entrada').classList.add('revelada');
+  }, tempoRevelarLogin);
 }
 
 /* Move a MESMA tag <img> da splash para dentro da tela de login (em vez
