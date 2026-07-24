@@ -1,7 +1,7 @@
 <!--
 ================================================================================
   Finanças.DuC — index.html
-  Versão atual: V00.039  (ver <title> na linha 6)
+  Versão atual: V00.042  (ver <title> na linha 6)
 
   🔗 LINK DO APP (GitHub Pages):
       https://ductrabalho.github.io/Financas.DuC/
@@ -169,7 +169,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Finanças.DuC V00.039</title>
+<title>Finanças.DuC V00.042</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://accounts.google.com/gsi/client" async defer onload="inicializarGoogleAuth()"></script>
@@ -745,18 +745,24 @@
     background: var(--bg);
     display: flex; flex-direction: column;
     align-items: center;
-    /* Posiciona o bloco para que a logo caia no mesmo ponto da tela do
-       Apps Script (centro da logo a ~37.6% da altura da viewport). */
+    /* justify-content e padding-top são definidos via JS (ver script
+       logo abaixo do #splash), medindo a posição real da logo na tela
+       de login ANTES da primeira pintura. Isso garante que a logo caia
+       no mesmo pixel em qualquer resolução — um valor fixo em vh não
+       funciona porque a altura do card de login abaixo muda conforme a
+       largura da tela. */
     justify-content: flex-start;
-    padding-top: calc(37.6vh - 27px);
+    padding-top: 0;
     gap: 26px;
     transition: opacity .45s ease;
   }
   #splash.saindo{ opacity: 0; pointer-events: none; }
-  #splash img{
-    width: min(72vw, 290px);
+  #splash img, #tela-entrada .logo-grande img{
+    max-width: 340px;
+    width: 90%;
     height: auto;
     display: block;
+    margin: 0 auto;
   }
   #splash .splash-txt{
     font-size: .95rem;
@@ -965,7 +971,7 @@
 
   <div id="tela-entrada">
     <div class="bg-orb"></div>
-    <div class="logo-grande"><img src="https://ductrabalho.github.io/Financas.DuC/logo.png" alt="FinançasDuC"></div>
+    <div class="logo-grande"></div>
     <div class="logo-subtitulo">Controle de pagamentos e cobranças</div>
     <div class="logo-tag">
       <span class="logo-versao" id="badge-versao"></span>
@@ -994,6 +1000,40 @@
     </div>
   </div>
 
+  <script>
+    /* Faz a logo da splash cair exatamente no mesmo pixel da logo da
+       tela de login (#tela-entrada .logo-grande img), em QUALQUER
+       resolução — em vez de um valor fixo em vh, que desalinha quando
+       a largura da tela muda a altura do card abaixo.
+
+       #tela-entrada já é display:flex por padrão (não tem a classe
+       .oculto) e está renderizada por baixo do #splash (que é
+       position:fixed cobrindo a tela inteira) — então sua logo já
+       está no lugar final antes mesmo da splash aparecer. Basta medir
+       a posição real dela e aplicar como padding-top da splash.
+
+       IMPORTANTE: a fonte Fraunces carrega de forma assíncrona
+       (Google Fonts, display=swap). Medir antes dela carregar dá a
+       métrica da fonte de fallback, que tem altura de linha diferente
+       e desalinha a logo depois que a Fraunces troca. Por isso
+       aguarda-se document.fonts.ready antes de medir — na maioria das
+       vezes a fonte já está pronta (cache do navegador) e a splash
+       aparece direto na posição certa, sem salto perceptível. */
+    function posicionarLogoSplash(){
+      var splash = document.getElementById('splash');
+      var imgLogin = document.querySelector('#tela-entrada .logo-grande img');
+      if (!splash || !imgLogin) return;
+      var topoLogo = imgLogin.getBoundingClientRect().top;
+      splash.style.paddingTop = Math.max(0, topoLogo) + 'px';
+    }
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(posicionarLogoSplash);
+      posicionarLogoSplash(); // aplica já com a fonte disponível (evita 1º frame no lugar errado se possível)
+    } else {
+      posicionarLogoSplash(); // navegador sem Font Loading API: melhor esforço
+    }
+  </script>
+
   <div id="tela-conta-nao-encontrada" class="oculto tela-sec">
     <div class="entrada-caixa">
       <p class="entrada-texto">Conta não encontrada.</p>
@@ -1014,7 +1054,7 @@
 
   <div id="app-conectado" class="oculto">
   <header class="hdr">
-      <div class="logo"><img src="https://ductrabalho.github.io/Financas.DuC/logo.png" alt="DuC" class="h1-logo"></div>
+      <div class="logo"></div>
 
       <div class="hdr-actions">
         <button class="icon-btn btn-plus" id="btn-plus-header" title="Adicionar" aria-label="Adicionar" onclick="toggleMenuHeader()">+</button>
@@ -2245,8 +2285,25 @@ const elStatusEntrada = document.getElementById('status-entrada');
 const elBtnConfigHeader = document.getElementById('btn-config');
 
 function mostrarTela(tela){
-  [elTelaEntrada, elTelaNaoEncontrada, elTelaMesclagem, elAppConectado].forEach(t => t.classList.add('oculto'));
-  tela.classList.remove('oculto');
+  // Detecta se estamos saindo da tela de login DIRETO para o app conectado
+  // (não de qualquer outra tela) — só nesse caso a logo "continua" visualmente,
+  // pois é a mesma jornada visual que o usuário estava acompanhando.
+  const vindoDoLoginParaApp = tela === elAppConectado && !elTelaEntrada.classList.contains('oculto');
+
+  if (vindoDoLoginParaApp){
+    // IMPORTANTE: o container de destino (#app-conectado) precisa estar
+    // display:flex ANTES de medir sua caixa no FLIP — enquanto ele tem
+    // .oculto (display:none), getBoundingClientRect() de qualquer coisa
+    // dentro dele retorna tudo zerado, o que quebra o cálculo da animação.
+    // Por isso aqui a ordem é: 1) revela o destino, 2) move+anima a logo,
+    // 3) só então esconde as telas antigas.
+    elAppConectado.classList.remove('oculto');
+    moverLogoParaHeader();
+    [elTelaEntrada, elTelaNaoEncontrada, elTelaMesclagem].forEach(t => t.classList.add('oculto'));
+  } else {
+    [elTelaEntrada, elTelaNaoEncontrada, elTelaMesclagem, elAppConectado].forEach(t => t.classList.add('oculto'));
+    tela.classList.remove('oculto');
+  }
   elBtnConfigHeader.classList.toggle('oculto', tela !== elAppConectado);
 
   // ── Momento ideal para buscar versão nova ──
@@ -2259,6 +2316,40 @@ function mostrarTela(tela){
       setTimeout(checarAtualizacao, 600);
     }
   }
+}
+
+/* Move a MESMA <img> da logo (que já está na tela de login) para dentro
+   do cabeçalho do app conectado, animando a diferença de tamanho/posição
+   via técnica FLIP — igual ao que acontece entre a splash e o login.
+   Assim nunca existem duas imagens (uma saindo, outra entrando): é uma
+   imagem só, o tempo todo, do início ao fim da jornada. */
+function moverLogoParaHeader(){
+  try {
+    const img = document.querySelector('#tela-entrada .logo-grande img');
+    const destino = document.querySelector('#app-conectado .logo');
+    if (!img || !destino) return;
+
+    const antes = img.getBoundingClientRect();
+    destino.appendChild(img);
+    const depois = img.getBoundingClientRect();
+
+    const escalaX = antes.width / depois.width;
+    const escalaY = antes.height / depois.height;
+    const deltaX = antes.left + antes.width / 2 - (depois.left + depois.width / 2);
+    const deltaY = antes.top + antes.height / 2 - (depois.top + depois.height / 2);
+    img.style.transition = 'none';
+    img.style.transformOrigin = 'center center';
+    img.style.transform = `translate(${deltaX}px, ${deltaY}px) scale(${escalaX}, ${escalaY})`;
+
+    requestAnimationFrame(() => {
+      img.style.transition = 'transform .5s cubic-bezier(.2,.7,.3,1)';
+      img.style.transform = 'none';
+      img.addEventListener('transitionend', () => {
+        img.style.transition = '';
+        img.style.transformOrigin = '';
+      }, { once: true });
+    });
+  } catch(e) { /* pior caso: a logo aparece no header sem animação, mas aparece */ }
 }
 
 function atualizarStatusEntrada(tipo, texto){
@@ -2980,7 +3071,9 @@ async function checarAtualizacao(){
 // Chamada quando o app está pronto. Garante um tempo mínimo visível
 // (para não dar um "flash" desagradável) mas nunca atrasa além disso.
 const SPLASH_INICIO = Date.now();
-const SPLASH_MIN_MS = 550;
+const SPLASH_MIN_MS = 800; // > duração da animação de entrada (.75s), para o
+                            // FLIP medir a logo já no estado final (scale(1)),
+                            // não no meio da animação de entrada
 let splashJaSaiu = false;
 
 // Promessa que resolve quando a imagem da logo terminou de carregar.
@@ -3004,10 +3097,46 @@ async function esconderSplash(){
   const decorrido = Date.now() - SPLASH_INICIO;
   const esperar = Math.max(0, SPLASH_MIN_MS - decorrido);
   setTimeout(() => {
+    moverLogoParaLogin(el);
     el.classList.add('saindo');
     setTimeout(() => { try { el.remove(); } catch(e){} }, 500);
   }, esperar);
 }
+
+/* Move a MESMA tag <img> da splash para dentro da tela de login (em vez
+   de deixar duas imagens separadas — uma esmaecendo, outra aparecendo
+   por baixo). Como é o mesmo elemento, não há "troca" de imagem: ela
+   continua sendo a mesma logo, só muda de tamanho/posição — e essa
+   mudança é animada via técnica FLIP (First-Last-Invert-Play). */
+function moverLogoParaLogin(splashEl){
+  try {
+    const img = splashEl.querySelector('img');
+    const destino = document.querySelector('#tela-entrada .logo-grande');
+    if (!img || !destino) return;
+
+    const antes = img.getBoundingClientRect();
+    destino.appendChild(img);
+    const depois = img.getBoundingClientRect();
+
+    const escalaX = antes.width / depois.width;
+    const escalaY = antes.height / depois.height;
+    const deltaX = antes.left + antes.width / 2 - (depois.left + depois.width / 2);
+    const deltaY = antes.top + antes.height / 2 - (depois.top + depois.height / 2);
+    img.style.transition = 'none';
+    img.style.transformOrigin = 'center center';
+    img.style.transform = `translate(${deltaX}px, ${deltaY}px) scale(${escalaX}, ${escalaY})`;
+
+    requestAnimationFrame(() => {
+      img.style.transition = 'transform .45s cubic-bezier(.2,.7,.3,1)';
+      img.style.transform = 'none';
+      img.addEventListener('transitionend', () => {
+        img.style.transition = '';
+        img.style.transformOrigin = '';
+      }, { once: true });
+    });
+  } catch(e) { /* pior caso: a logo aparece no login sem animação, mas aparece */ }
+}
+
 // Rede de segurança: se algo travar, a splash sai sozinha em 12s.
 setTimeout(esconderSplash, 12000);
 
