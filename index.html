@@ -19,18 +19,22 @@
   }
   #grade {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    grid-template-columns: repeat(auto-fill, 200px);
+    justify-content: center;
     gap: 10px;
   }
   a.item {
-    padding: 14px 10px;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    width: 200px;
+    min-height: 110px;
+    box-sizing: border-box;
     background: #1c1f24;
     border: 1px solid #2d3138;
     border-radius: 8px;
     color: #e9e6df;
     text-decoration: none;
-    font-size: 13px;
-    text-align: center;
+    overflow: hidden;
     transition: background-color 0.15s, border-color 0.15s;
   }
   a.item:hover {
@@ -45,6 +49,28 @@
   a.item.visitado:hover {
     background: #378ADD;
     border-color: #378ADD;
+    color: #ffffff;
+  }
+  .versao {
+    font-size: 13px;
+    font-weight: 600;
+    color: inherit;
+    background: #14161a;
+    padding: 8px 10px;
+    text-align: center;
+  }
+  a.item:hover .versao {
+    background: transparent;
+  }
+  .resumo {
+    font-size: 12px;
+    color: #a9aeb8;
+    line-height: 1.4;
+    word-wrap: break-word;
+    text-align: center;
+    padding: 8px 12px 14px;
+  }
+  a.item:hover .resumo {
     color: #ffffff;
   }
   #status {
@@ -151,8 +177,17 @@ async function carregar() {
       link.className = "item" + (estaVisitadoRecente(v.nome) ? " visitado" : "");
       link.href = v.nome;
       link.target = "_blank";
-      link.textContent = "Finanças.DuC V" + v.numero;
-      link.title = resumoDaVersao(resumos, v.numero);
+
+      const spanVersao = document.createElement("span");
+      spanVersao.className = "versao";
+      spanVersao.textContent = "Finanças.DuC V" + v.numero;
+
+      const spanResumo = document.createElement("span");
+      spanResumo.className = "resumo";
+      spanResumo.textContent = resumoDaVersao(resumos, v.numero);
+
+      link.appendChild(spanVersao);
+      link.appendChild(spanResumo);
       link.addEventListener("click", () => marcarVisitado(v.nome));
       grade.appendChild(link);
     }
