@@ -1,0 +1,1667 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DuC Finanças</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client" async defer onload="inicializarGoogleAuth()"></script>
+<style>
+  :root{
+    --bg: #14161a;
+    --surface: #1c1f24;
+    --surface-2: #23272d;
+    --line: #2d3138;
+    --text: #e9e6df;
+    --text-dim: #8f95a0;
+    --amber: #d9a13a;
+    --green: #5fae84;
+    --red: #d9685c;
+  }
+  *{ box-sizing: border-box; }
+  body{
+    margin:0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap{ max-width: 880px; margin: 0 auto; padding: 28px 20px 80px; }
+  header{ margin-bottom: 22px; }
+  .header-topo{ display:flex; align-items:center; justify-content:space-between; gap: 12px; }
+  h1{
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 1.6rem;
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+  h1 .tick{ color: var(--amber); }
+  .subtitulo{ color: var(--text-dim); font-size: 0.85rem; margin-top: 4px; }
+
+  .btn-config{
+    flex-shrink: 0;
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--text-dim);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+  }
+  .btn-config:hover{ color: var(--amber); border-color: var(--amber); }
+  .btn-config svg{ width: 19px; height: 19px; }
+
+  .modal-overlay{
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    z-index: 1000;
+  }
+  .modal-overlay.aberto{ display: flex; }
+  .modal{
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 20px;
+    width: 100%;
+    max-width: 460px;
+    max-height: 85vh;
+    overflow-y: auto;
+  }
+  .modal-cabecalho{ display:flex; align-items:center; justify-content:space-between; margin-bottom: 16px; }
+  .modal-cabecalho h2{ font-family: 'Fraunces', serif; font-size: 1.1rem; margin: 0; color: var(--amber); }
+  .modal-fechar{ background: none; border: none; color: var(--text-dim); font-size: 1.05rem; cursor: pointer; padding: 4px; }
+  .modal label{ font-size: 0.72rem; color: var(--text-dim); display: block; margin-bottom: 6px; }
+  .modal input{
+    width: 100%;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    color: var(--text);
+    padding: 10px;
+    border-radius: 7px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    margin-bottom: 16px;
+  }
+  .modal-dica{ font-size: 0.76rem; color: var(--text-dim); margin: -10px 0 16px; line-height: 1.5; }
+  .modal-dica code{ color: var(--amber); }
+  .lista-passos{ margin: 0 0 16px; padding-left: 20px; font-size: 0.82rem; line-height: 1.7; color: var(--text); }
+  .lista-passos li{ margin-bottom: 4px; }
+  .lista-passos code{ color: var(--amber); font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; }
+
+  .modal-tabs{ display:flex; background: var(--surface-2); border:1px solid var(--line); border-radius:10px; padding:4px; margin-bottom:18px; gap:4px; }
+  .modal-tab-btn{ flex:1; text-align:center; padding:7px 0; border-radius:7px; background:transparent; border:none; color:var(--text-dim); font-size:0.76rem; cursor:pointer; font-family:inherit; }
+  .modal-tab-btn.ativo{ background: var(--surface); color: var(--amber); }
+  .modal-conteudo{ display:none; }
+  .modal-conteudo.ativo{ display:block; }
+
+  .cat-secao{ margin-bottom: 20px; }
+  .cat-secao-titulo{ display:flex; align-items:center; justify-content:space-between; font-size:0.84rem; margin-bottom:10px; }
+  .cat-secao-titulo .bolinha{ margin-right:6px; }
+  .cat-secao-titulo .bolinha.gastos{ color: var(--red); }
+  .cat-secao-titulo .bolinha.ganhos{ color: var(--green); }
+  .cat-add-btn{ background:transparent; border:1px solid var(--line); color: var(--amber); font-size:0.72rem; padding:4px 10px; border-radius:7px; cursor:pointer; font-family:inherit; }
+  .cat-lista{ display:flex; flex-wrap:wrap; gap:8px; }
+  .cat-chip{ display:flex; align-items:center; gap:6px; background: var(--surface-2); border:1px solid var(--line); border-radius:8px; padding:6px 6px 6px 10px; font-size:0.82rem; }
+  .cat-chip button{ background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:0.8rem;padding:2px 4px; }
+  .cat-chip button:hover{ color: var(--red); }
+  .cat-vazio{ color: var(--text-dim); font-size: 0.8rem; }
+
+  .dia-ref-grade{ display:grid; grid-template-columns: repeat(3,1fr); gap:8px; margin-bottom: 14px; }
+  .dia-ref-item{ background: var(--surface-2); border:1px solid var(--line); border-radius:8px; padding:10px 6px; text-align:center; cursor:pointer; font-size:0.84rem; }
+  .dia-ref-item .desc{ font-size:0.66rem; color:var(--text-dim); display:block; margin-top:2px; }
+  .dia-ref-item.selecionado{ border-color:var(--amber); color:var(--amber); }
+  .dia-ref-item.selecionado .desc{ color: var(--amber); opacity: 0.8; }
+  .dia-ref-outro{ display:flex; align-items:center; gap:10px; margin-bottom:16px; }
+  .dia-ref-outro label{ margin:0; flex-shrink:0; }
+  .dia-ref-outro input{ width:70px; margin-bottom:0; }
+
+  .cards{ display:grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 18px; }
+  .card{ background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px 16px 14px; }
+  .card .rotulo{ font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); margin-bottom: 6px; }
+  .card .num{
+    font-family: 'JetBrains Mono', monospace;
+    font-size: clamp(0.62rem, 3.2vw, 1.3rem);
+    font-weight: 700;
+    white-space: nowrap;
+    letter-spacing: -0.02em;
+  }
+  .card.receitas .num{ color: var(--green); }
+  .card.gastos .num{ color: var(--red); }
+  .card.saldo .num.pos{ color: var(--amber); }
+  .card.saldo .num.neg{ color: var(--red); }
+  @media (max-width: 600px){
+    .cards{ gap: 8px; }
+    .card{ padding: 12px 10px 10px; }
+    .card .rotulo{ font-size: 0.62rem; }
+  }
+
+  .tabs{
+    display:flex;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 4px;
+    margin-bottom: 16px;
+    gap: 4px;
+  }
+  .tab-btn{
+    flex:1;
+    text-align:center;
+    padding: 9px 0;
+    border-radius: 7px;
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    font-size: 0.88rem;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .tab-btn.ativo{ background: var(--surface); color: var(--amber); }
+
+  .filtro-datas{ display:flex; gap: 10px; margin-bottom: 18px; }
+  .filtro-datas div{ flex:1; }
+  .filtro-datas label{ font-size: 0.72rem; color: var(--text-dim); display:block; margin-bottom: 4px; }
+  .filtro-datas input{
+    width:100%;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    color: var(--text);
+    padding: 8px 10px;
+    border-radius: 7px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+  }
+
+  .aba{ display:none; }
+  .aba.ativa{ display:block; }
+
+  .botoes-topo{ display:flex; gap: 10px; margin-bottom: 16px; }
+  button{
+    background: var(--amber);
+    color: #1a1306;
+    border: none;
+    font-weight: 600;
+    padding: 10px 16px;
+    border-radius: 7px;
+    cursor: pointer;
+    font-size: 0.88rem;
+    font-family: inherit;
+  }
+  button:hover{ filter: brightness(1.08); }
+  button.outline{ background: transparent; color: var(--amber); border: 1px solid var(--amber); }
+  button.secundario{ background: transparent; color: var(--text-dim); border: 1px solid var(--line); }
+  button.full{ width:100%; }
+
+  form{
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 16px;
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+  form.escondido{ display:none; }
+  form label{ font-size: 0.72rem; color: var(--text-dim); display:block; margin-bottom: 4px; }
+  form input, form select{
+    width: 100%;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    color: var(--text);
+    padding: 8px 10px;
+    border-radius: 7px;
+    font-family: inherit;
+    font-size: 0.88rem;
+  }
+  form input[type="number"]{ font-family: 'JetBrains Mono', monospace; }
+  .col-2{ grid-column: span 2; }
+  .col-3{ grid-column: span 3; }
+  .col-4{ grid-column: span 4; }
+  .col-6{ grid-column: span 6; }
+  @media (max-width: 600px){
+    form{ grid-template-columns: repeat(2, 1fr); }
+    .col-2, .col-3, .col-4, .col-6{ grid-column: 1 / -1; }
+    .botoes-topo{ flex-direction: column; }
+  }
+  .check-linha{ display:flex; align-items:center; gap: 8px; font-size: 0.85rem; color: var(--text-dim); }
+  .check-linha input{ width:auto; }
+  .acoes-form{ display:flex; gap:10px; }
+
+  .tabela-wrap{ overflow-x: auto; border-radius: 10px; }
+  table{ width:100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+  th, td{ text-align: left; padding: 10px 12px; font-size: 0.85rem; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th{ color: var(--text-dim); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 500; }
+  tr:last-child td{ border-bottom: none; }
+  td.tick-cel{ width: 4px; padding: 0; }
+  .tick-bar{ width: 4px; height: 100%; display:block; min-height: 32px; }
+  .tick-bar.Receita{ background: var(--green); }
+  .tick-bar.Despesa, .tick-bar.Pagar{ background: var(--red); }
+  .tick-bar.Cobrar{ background: var(--green); }
+  td.valor{ font-family: 'JetBrains Mono', monospace; text-align:right; }
+  td.valor.Receita, td.valor.Cobrar{ color: var(--green); }
+  td.valor.Despesa, td.valor.Pagar{ color: var(--red); }
+  .tag{ font-size: 0.68rem; padding: 2px 7px; border-radius: 99px; border: 1px solid var(--line); color: var(--text-dim); white-space: nowrap; }
+  .tag.Concluído{ color: var(--green); border-color: var(--green); }
+  .tag-pilha{ display:flex; flex-direction:column; gap:3px; align-items:flex-start; }
+  .apagar-btn{ background: none; border: none; color: var(--text-dim); cursor: pointer; font-size: 0.95rem; padding: 2px 6px; }
+  .apagar-btn:hover{ color: var(--red); }
+  .vazio{ text-align:center; color: var(--text-dim); padding: 28px 20px; font-size: 0.85rem; line-height:1.6; white-space: normal; }
+
+  .lembrete-item{
+    display:flex; align-items:center; justify-content:space-between;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 8px;
+    padding: 12px 14px; margin-bottom: 8px; font-size: 0.86rem;
+  }
+  .lembrete-info{ display:flex; align-items:center; gap:10px; }
+  .lembrete-meta{ display:flex; flex-direction:column; gap:2px; }
+  .lembrete-meta .desc{ font-weight: 500; }
+  .lembrete-meta .venc{ font-size: 0.74rem; color: var(--text-dim); font-family:'JetBrains Mono', monospace; }
+  .lembrete-acoes{ display:flex; align-items:center; gap:10px; }
+  .status-btn{
+    background: transparent; border: 1px solid var(--line); color: var(--text-dim);
+    font-size: 0.72rem; padding: 4px 10px; border-radius: 99px; cursor:pointer; font-family: inherit;
+  }
+  .status-btn.Concluído{ color: var(--green); border-color: var(--green); }
+
+  .oculto{ display:none !important; }
+  .status-auto{ font-size:0.82rem; padding:11px 13px; border-radius:8px; margin:14px 0; line-height:1.55; }
+  .status-auto.status-info{ background: var(--surface-2); color: var(--text-dim); border:1px solid var(--line); }
+  .status-auto.status-sucesso{ background: rgba(95,174,132,0.12); color: var(--green); border:1px solid var(--green); }
+  .status-auto.status-erro{ background: rgba(217,104,92,0.12); color: var(--red); border:1px solid var(--red); }
+  .status-auto.status-aviso{ background: rgba(217,161,58,0.12); color: var(--amber); border:1px solid var(--amber); }
+  .divisor-ou{ display:flex; align-items:center; gap:10px; margin:18px 0; color: var(--text-dim); font-size:0.74rem; text-transform:uppercase; letter-spacing:0.05em; }
+  .divisor-ou::before, .divisor-ou::after{ content:''; flex:1; height:1px; background: var(--line); }
+
+  .resumo-bloco{ margin-bottom: 22px; }
+  .resumo-titulo{ font-size: 0.78rem; color: var(--text-dim); text-transform:uppercase; letter-spacing:0.05em; margin-bottom: 10px; }
+  .barra-linha{ display:flex; align-items:center; gap: 10px; margin-bottom: 9px; font-size: 0.85rem; }
+  .barra-rotulo{ width: 100px; flex-shrink:0; color: var(--text-dim); overflow:hidden; text-overflow:ellipsis; }
+  .barra-fundo{ flex:1; background: var(--surface-2); border-radius: 6px; height: 18px; overflow:hidden; }
+  .barra-preenchida{ height:100%; background: var(--amber); border-radius: 6px; }
+  .barra-valor{ width: 100px; text-align:right; font-family:'JetBrains Mono', monospace; flex-shrink:0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="header-topo">
+      <h1><span class="tick">▌</span>DuC Finanças</h1>
+      <button class="btn-config" id="btn-config" title="Configurações" aria-label="Configurações">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+      </button>
+    </div>
+    <div class="subtitulo" id="subtitulo">Pagamentos e cobranças</div>
+  </header>
+
+  <!-- MODAL DE CONFIGURAÇÕES -->
+  <div class="modal-overlay" id="modal-config">
+    <div class="modal">
+      <div class="modal-cabecalho">
+        <h2>Configurações</h2>
+        <button class="modal-fechar" id="modal-fechar">✕</button>
+      </div>
+
+      <div class="modal-tabs">
+        <button class="modal-tab-btn ativo" data-mtab="bancodedados">Banco de Dados</button>
+        <button class="modal-tab-btn" data-mtab="categorias">Categorias</button>
+        <button class="modal-tab-btn" data-mtab="referencia">Dia de Referência</button>
+        <button class="modal-tab-btn" data-mtab="notificacoes">Notificações</button>
+      </div>
+
+      <div class="modal-conteudo ativo" data-mconteudo="bancodedados">
+        <div class="modal-dica" style="margin-top:0;">O banco de dados é a sua própria planilha do Google Sheets. Ela fica só na sua conta — ninguém mais tem acesso.</div>
+
+        <button class="full" id="btn-config-auto">🪄 Configurar automaticamente com Google</button>
+        <div class="modal-dica" id="dica-config-auto" style="margin:8px 0 0;">Você vai logar com sua conta Google e autorizar a criação de uma planilha + um script. Leva cerca de 30 segundos.</div>
+        <div id="status-config-auto" class="status-auto oculto"></div>
+
+        <div class="divisor-ou">ou</div>
+        <button type="button" class="secundario full" id="btn-toggle-manual">Configurar manualmente</button>
+
+        <div id="bloco-manual" class="oculto" style="margin-top:16px;">
+          <div class="modal-dica" style="margin-top:0;">Copie o código e siga os passos:</div>
+          <button class="full" id="btn-copiar-codigo" style="margin-bottom:16px;">Copiar código (Code.gs)</button>
+          <ol class="lista-passos">
+            <li>Crie (ou abra) uma planilha no Google Sheets</li>
+            <li>Menu <b>Extensões &gt; Apps Script</b></li>
+            <li>Apague o conteúdo padrão do editor, cole o código copiado e salve (Ctrl+S)</li>
+            <li>Volte pra planilha e recarregue a página — vai aparecer o menu <b>⚙️ DuC Finanças</b></li>
+            <li>Clique em <b>⚙️ DuC Finanças &gt; Configurar tudo (1ª vez)</b> e autorize o acesso quando pedido</li>
+            <li><b>Implantar &gt; Nova implantação</b> → tipo "App da Web" → Executar como: Eu / Acesso: Qualquer pessoa → Implantar</li>
+            <li>Copie a URL gerada (termina em <code>/exec</code>) e cole abaixo</li>
+          </ol>
+          <div class="modal-dica">Na primeira execução o Google vai pedir autorização da sua própria conta — aceite.</div>
+          <label>URL do Apps Script</label>
+          <input type="text" id="config-api-url" placeholder="https://script.google.com/macros/s/.../exec">
+          <button id="modal-salvar-url">Salvar URL</button>
+        </div>
+      </div>
+
+      <div class="modal-conteudo" data-mconteudo="categorias">
+        <div class="cat-secao">
+          <div class="cat-secao-titulo"><span><span class="bolinha gastos">●</span>Categorias de Gastos</span><button class="cat-add-btn" data-tipo="Despesa">+ Adicionar</button></div>
+          <div class="cat-lista" id="cat-lista-despesa"></div>
+        </div>
+        <div class="cat-secao">
+          <div class="cat-secao-titulo"><span><span class="bolinha ganhos">●</span>Categorias de Ganhos</span><button class="cat-add-btn" data-tipo="Receita">+ Adicionar</button></div>
+          <div class="cat-lista" id="cat-lista-receita"></div>
+        </div>
+        <form id="form-nova-categoria" class="escondido">
+          <input type="hidden" id="nc-tipo">
+          <div class="col-2"><label>Emoji</label><input type="text" id="nc-emoji" maxlength="4" placeholder="🏷️"></div>
+          <div class="col-4"><label>Nome</label><input type="text" id="nc-nome" placeholder="Ex: Lazer"></div>
+          <div class="col-6 acoes-form">
+            <button type="submit">Adicionar</button>
+            <button type="button" class="secundario" id="nc-cancelar">Cancelar</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="modal-conteudo" data-mconteudo="referencia">
+        <div class="modal-dica" style="margin-top:0;">Quando você recebe seu dinheiro? Isso define o período padrão exibido nos filtros De/Até.</div>
+        <div class="dia-ref-grade" id="dia-ref-grade"></div>
+        <div class="dia-ref-outro">
+          <label>Outro dia:</label>
+          <input type="number" id="dia-ref-outro" min="1" max="31">
+        </div>
+        <button id="modal-salvar-referencia">Salvar</button>
+      </div>
+
+      <div class="modal-conteudo" data-mconteudo="notificacoes">
+        <div class="modal-dica" style="margin-top:0;">Importa transações automaticamente quando o app do seu banco mostrar uma notificação (Pix, compra no cartão, boleto pago etc), usando o MacroDroid como ponte.</div>
+        <a href="https://play.google.com/store/apps/details?id=com.arlosoft.macrodroid" target="_blank" rel="noopener">
+          <button class="full" type="button">📲 Baixar MacroDroid (Play Store)</button>
+        </a>
+        <button class="full secundario" id="btn-copiar-url-notificacao" style="margin-top:10px;">Copiar URL de importação</button>
+        <ol class="lista-passos" style="margin-top:16px;">
+          <li>Instale e abra o MacroDroid, toque em <b>Adicionar Macro</b></li>
+          <li>Gatilho: <b>Notificação &gt; Recebida</b> → selecione o app do seu banco</li>
+          <li>Conceda a permissão de <b>Acesso a Notificações</b> quando pedido (é única vez)</li>
+          <li>Ação: <b>Conectividade &gt; Requisição da Web (HTTP GET)</b></li>
+          <li>Na URL, cole o que foi copiado acima e, no final, adicione a variável de texto da notificação do MacroDroid (geralmente <code>[nt_text]</code>)</li>
+          <li>Salve a macro e teste recebendo (ou simulando) uma notificação do banco</li>
+        </ol>
+        <div class="modal-dica">A transação cai como "Variável", origem "Notificação", com uma tentativa automática de identificar valor e se é receita ou despesa pelo texto. Sempre revise na aba Transações.</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="aviso-config">
+    Configure a URL do seu Apps Script para começar a usar. <button class="outline" id="aviso-abrir-config" style="margin-top:8px;">Abrir configurações</button>
+  </div>
+
+  <div class="cards">
+    <div class="card receitas">
+      <div class="rotulo">Receitas</div>
+      <div class="num" id="card-receitas">R$ 0,00</div>
+    </div>
+    <div class="card saldo">
+      <div class="rotulo">Saldo</div>
+      <div class="num" id="card-saldo">R$ 0,00</div>
+    </div>
+    <div class="card gastos">
+      <div class="rotulo">Gastos</div>
+      <div class="num" id="card-gastos">R$ 0,00</div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn ativo" data-aba="transacoes">Transações</button>
+    <button class="tab-btn" data-aba="resumo">Resumo</button>
+    <button class="tab-btn" data-aba="lembretes">Lembretes</button>
+  </div>
+
+  <div class="filtro-datas">
+    <div><label>De:</label><input type="date" id="data-inicio"></div>
+    <div><label>Até:</label><input type="date" id="data-fim"></div>
+  </div>
+
+  <!-- ABA: TRANSAÇÕES -->
+  <div class="aba ativa" id="aba-transacoes">
+    <div class="botoes-topo">
+      <button id="btn-nova-transacao">Nova Transação</button>
+      <button class="outline" id="btn-importar">Importar</button>
+      <input type="file" id="arquivo-importar" accept=".csv" style="display:none">
+    </div>
+
+    <form id="form-transacao" class="escondido">
+      <div class="col-2">
+        <label>Tipo</label>
+        <select id="t-tipo">
+          <option value="Despesa">Despesa</option>
+          <option value="Receita">Receita</option>
+        </select>
+      </div>
+      <div class="col-2">
+        <label>Periodicidade</label>
+        <select id="t-periodicidade">
+          <option value="Variável">Variável</option>
+          <option value="Fixa">Fixa</option>
+          <option value="Única">Única</option>
+        </select>
+      </div>
+      <div class="col-2">
+        <label>Categoria</label>
+        <select id="t-categoria-tema"><option value="">Sem categoria</option></select>
+      </div>
+      <div class="col-2">
+        <label>Data</label>
+        <input type="date" id="t-data" required>
+      </div>
+      <div class="col-4">
+        <label>Descrição</label>
+        <input type="text" id="t-descricao" placeholder="Ex: aluguel, mercado, salário" required>
+      </div>
+      <div class="col-2">
+        <label>Valor (R$)</label>
+        <input type="number" id="t-valor" step="0.01" min="0" placeholder="0,00" required>
+      </div>
+      <div class="col-6" id="t-recorrente-wrap" style="display:none;">
+        <label class="check-linha"><input type="checkbox" id="t-recorrente" checked> Repetir automaticamente todo mês (cadastra como fixo)</label>
+      </div>
+      <div class="col-6 acoes-form">
+        <button type="submit">Salvar</button>
+        <button type="button" class="secundario" id="t-cancelar">Cancelar</button>
+      </div>
+    </form>
+
+    <div class="tabela-wrap">
+      <table id="tabela-transacoes">
+        <thead><tr><th></th><th>Data</th><th>Descrição</th><th>Categoria</th><th>Origem</th><th style="text-align:right">Valor</th><th></th></tr></thead>
+        <tbody id="corpo-transacoes"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ABA: RESUMO -->
+  <div class="aba" id="aba-resumo">
+    <div id="conteudo-resumo"></div>
+  </div>
+
+  <!-- ABA: LEMBRETES -->
+  <div class="aba" id="aba-lembretes">
+    <div class="botoes-topo">
+      <button class="full" id="btn-novo-lembrete">Novo Lembrete</button>
+    </div>
+
+    <form id="form-lembrete" class="escondido">
+      <div class="col-3">
+        <label>Tipo</label>
+        <select id="le-tipo">
+          <option value="Pagar">A pagar</option>
+          <option value="Cobrar">A cobrar</option>
+        </select>
+      </div>
+      <div class="col-3">
+        <label>Vencimento</label>
+        <input type="date" id="le-vencimento" required>
+      </div>
+      <div class="col-3">
+        <label>Descrição</label>
+        <input type="text" id="le-descricao" placeholder="Ex: cartão, cliente X" required>
+      </div>
+      <div class="col-3">
+        <label>Valor (R$)</label>
+        <input type="number" id="le-valor" step="0.01" min="0" placeholder="0,00" required>
+      </div>
+      <div class="col-6">
+        <label class="check-linha"><input type="checkbox" id="le-recorrente"> Repetir todo mês</label>
+      </div>
+      <div class="col-6 acoes-form">
+        <button type="submit">Salvar</button>
+        <button type="button" class="secundario" id="le-cancelar">Cancelar</button>
+      </div>
+    </form>
+
+    <div id="lista-lembretes"></div>
+  </div>
+
+</div>
+
+<script>
+// ====== CONFIGURAÇÃO ======
+let API_URL = localStorage.getItem('duc_financas_api_url') || "";
+let diaReferenciaAtual = 1;
+let categoriasCache = { Despesa: [], Receita: [] };
+
+// Client ID do OAuth do Google. Crie o seu uma vez no Google Cloud Console
+// (Credenciais > Criar credenciais > ID do cliente OAuth > Aplicativo da Web)
+// e cole aqui. É público por natureza, fica visível no HTML — não é segredo.
+const GOOGLE_CLIENT_ID = "SEU_CLIENT_ID_AQUI.apps.googleusercontent.com";
+const GOOGLE_SCOPES = [
+  'https://www.googleapis.com/auth/spreadsheets',
+  'https://www.googleapis.com/auth/script.projects',
+  'https://www.googleapis.com/auth/script.deployments',
+  'https://www.googleapis.com/auth/script.scriptapp'
+].join(' ');
+
+const diasReferenciaPredefinidos = [
+  { dia: 1, desc: 'Início do mês' },
+  { dia: 5, desc: '5º dia útil' },
+  { dia: 10, desc: '2ª semana do mês' },
+  { dia: 15, desc: 'Metade do mês' },
+  { dia: 20, desc: '2ª quinzena' },
+  { dia: 25, desc: 'Fechamento' },
+];
+// ===========================
+
+const elInicio = document.getElementById('data-inicio');
+const elFim = document.getElementById('data-fim');
+const elAviso = document.getElementById('aviso-config');
+const modalConfig = document.getElementById('modal-config');
+const inputConfigUrl = document.getElementById('config-api-url');
+
+function formatarISOLocal(d){
+  const ano = d.getFullYear();
+  const mes = String(d.getMonth()+1).padStart(2,'0');
+  const dia = String(d.getDate()).padStart(2,'0');
+  return `${ano}-${mes}-${dia}`;
+}
+function calcularPeriodoPadrao(){
+  const hoje = new Date();
+  const dia = diaReferenciaAtual || 1;
+  let inicio, fim;
+  if (hoje.getDate() >= dia){
+    inicio = new Date(hoje.getFullYear(), hoje.getMonth(), dia);
+    fim = new Date(hoje.getFullYear(), hoje.getMonth()+1, dia-1);
+  } else {
+    inicio = new Date(hoje.getFullYear(), hoje.getMonth()-1, dia);
+    fim = new Date(hoje.getFullYear(), hoje.getMonth(), dia-1);
+  }
+  elInicio.value = formatarISOLocal(inicio);
+  elFim.value = formatarISOLocal(fim);
+}
+function formatarMoeda(v){
+  return 'R$ ' + Number(v).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+function formatarDataBR(iso){
+  const p = String(iso).substring(0,10).split('-');
+  return p.length === 3 ? p[2]+'/'+p[1]+'/'+p[0] : iso;
+}
+
+async function chamarAPI(params, metodo){
+  metodo = metodo || 'GET';
+  if (metodo === 'GET'){
+    const resp = await fetch(API_URL + '?' + new URLSearchParams(params).toString());
+    return resp.json();
+  }
+  const resp = await fetch(API_URL, { method: 'POST', body: new URLSearchParams(params) });
+  return resp.json();
+}
+
+// ---------- Código do backend (pra copiar nas configurações) ----------
+const CODE_GS = `/**
+ * CONTROLE FINANCEIRO — Backend (Google Apps Script) — v3
+ * -----------------------------------------------------------
+ * Abas: Transacoes, Fixos, Lembretes, LembretesFixos, Categorias, Configuracoes
+ *
+ * Como instalar:
+ * 1. Crie uma planilha nova no Google Sheets.
+ * 2. Extensões > Apps Script. Apague o conteúdo e cole este arquivo.
+ * 3. Rode "inicializar" uma vez (cria as abas e categorias padrão).
+ * 4. Rode "configurarTrigger" uma vez (ativa a geração automática mensal
+ *    de transações fixas e lembretes recorrentes).
+ * 5. Implantar > Nova implantação > App da Web.
+ *    - Executar como: Eu
+ *    - Quem pode acessar: Qualquer pessoa
+ * 6. Copie a URL (termina em /exec) e cole nas Configurações do HTML.
+ */
+
+var ABA_TRANSACOES = 'Transacoes';
+var ABA_FIXOS = 'Fixos';
+var ABA_LEMBRETES = 'Lembretes';
+var ABA_LEMBRETES_FIXOS = 'LembretesFixos';
+var ABA_CATEGORIAS = 'Categorias';
+var ABA_CONFIGURACOES = 'Configuracoes';
+
+function getSheet(nome) {
+  return SpreadsheetApp.getActiveSpreadsheet().getSheetByName(nome);
+}
+
+function inicializar() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  criarAbaSeNaoExiste(ss, ABA_TRANSACOES, ['ID', 'Data', 'Descricao', 'Tipo', 'Periodicidade', 'CategoriaTema', 'Valor', 'Origem', 'MesRef']);
+  criarAbaSeNaoExiste(ss, ABA_FIXOS, ['ID', 'Descricao', 'Tipo', 'Valor', 'DiaDoMes', 'Ativo', 'CategoriaTema']);
+  criarAbaSeNaoExiste(ss, ABA_LEMBRETES, ['ID', 'Descricao', 'Tipo', 'Valor', 'Vencimento', 'Recorrente', 'Status', 'MesRef']);
+  criarAbaSeNaoExiste(ss, ABA_LEMBRETES_FIXOS, ['ID', 'Descricao', 'Tipo', 'Valor', 'DiaDoMes', 'Ativo']);
+
+  var criouCategorias = criarAbaSeNaoExiste(ss, ABA_CATEGORIAS, ['ID', 'Nome', 'Emoji', 'Tipo', 'Ativo']);
+  if (criouCategorias) popularCategoriasPadrao();
+
+  var criouConfig = criarAbaSeNaoExiste(ss, ABA_CONFIGURACOES, ['Chave', 'Valor']);
+  if (criouConfig) {
+    getSheet(ABA_CONFIGURACOES).appendRow(['DiaReferencia', 1]);
+  }
+}
+
+function criarAbaSeNaoExiste(ss, nome, cabecalho) {
+  if (!ss.getSheetByName(nome)) {
+    var sh = ss.insertSheet(nome);
+    sh.appendRow(cabecalho);
+    sh.setFrozenRows(1);
+    return true;
+  }
+  return false;
+}
+
+function popularCategoriasPadrao() {
+  var sh = getSheet(ABA_CATEGORIAS);
+  var gastos = [
+    ['Alimentação', '🍔'], ['Transporte', '🚗'], ['Combustível', '⛽'],
+    ['Pensão', '👪'], ['Aluguel', '🏠'], ['Energia', '💡'],
+    ['Água', '💧'], ['Cartão', '💳'], ['Internet', '📶']
+  ];
+  var ganhos = [
+    ['Salário', '💰'], ['Aluguel', '🏠'], ['Pensão', '👪'],
+    ['Freelance', '💼'], ['Investimentos', '📈'], ['Vendas', '🛒'],
+    ['Comissão', '💵'], ['Presente', '🎁'], ['Bônus', '🎉']
+  ];
+  gastos.forEach(function (c) { sh.appendRow([Utilities.getUuid(), c[0], c[1], 'Despesa', true]); });
+  ganhos.forEach(function (c) { sh.appendRow([Utilities.getUuid(), c[0], c[1], 'Receita', true]); });
+}
+
+function configurarTrigger() {
+  var triggers = ScriptApp.getProjectTriggers();
+  for (var i = 0; i < triggers.length; i++) {
+    if (triggers[i].getHandlerFunction() === 'gerarRecorrentesDoMes') {
+      ScriptApp.deleteTrigger(triggers[i]);
+    }
+  }
+  ScriptApp.newTrigger('gerarRecorrentesDoMes')
+    .timeBased()
+    .everyDays(1)
+    .atHour(6)
+    .create();
+}
+
+// ---------- Menu na própria planilha ----------
+
+function onOpen() {
+  SpreadsheetApp.getUi()
+    .createMenu('⚙️ DuC Finanças')
+    .addItem('Configurar tudo (1ª vez)', 'configurarTudo')
+    .addToUi();
+}
+
+function configurarTudo() {
+  inicializar();
+  configurarTrigger();
+  PropertiesService.getScriptProperties().setProperty('inicializado', 'true');
+  PropertiesService.getScriptProperties().setProperty('triggerConfigurado', 'true');
+  SpreadsheetApp.getUi().alert('Tudo certo! Agora vá em Implantar > Nova implantação para gerar a URL do app.');
+}
+
+// Chamada automaticamente em toda requisição da API. Cria as abas na
+// primeira vez que o app da web é acessado, sem precisar rodar nada
+// manualmente no editor — necessário pro fluxo de configuração automática
+// (que implanta via API e nunca abre o editor do Apps Script).
+//
+// O gatilho mensal é configurado separadamente (com seu próprio controle de
+// sucesso): se o token OAuth usado no provisionamento ainda não tiver o
+// escopo "script.scriptapp", essa etapa falha sozinha sem travar o resto da
+// API — e tenta de novo na próxima requisição, em vez de ficar preso num
+// erro permanente.
+function garantirInicializado() {
+  var props = PropertiesService.getScriptProperties();
+
+  if (props.getProperty('inicializado') !== 'true') {
+    inicializar();
+    props.setProperty('inicializado', 'true');
+  }
+
+  if (props.getProperty('triggerConfigurado') !== 'true') {
+    try {
+      configurarTrigger();
+      props.setProperty('triggerConfigurado', 'true');
+    } catch (err) {
+      // Sem permissão ainda (ou outro erro pontual) pra criar o gatilho.
+      // Não interrompe a API — as abas já existem e os outros endpoints
+      // funcionam normalmente. Tenta de novo na próxima requisição.
+    }
+  }
+}
+
+// ---------- Roteamento da API ----------
+
+function doGet(e) { return handleRequest(e); }
+function doPost(e) { return handleRequest(e); }
+
+function handleRequest(e) {
+  var resultado;
+  try {
+    garantirInicializado();
+    var acao = e.parameter.action;
+    switch (acao) {
+      case 'listarTransacoes': resultado = listarTransacoes(e.parameter.inicio, e.parameter.fim); break;
+      case 'criarTransacao': resultado = criarTransacao(JSON.parse(e.parameter.dados)); break;
+      case 'apagarTransacao': resultado = apagarPorId(ABA_TRANSACOES, e.parameter.id); break;
+      case 'resumo': resultado = resumo(e.parameter.inicio, e.parameter.fim); break;
+      case 'listarFixos': resultado = listarFixos(); break;
+      case 'criarFixo': resultado = criarFixo(JSON.parse(e.parameter.dados)); break;
+      case 'apagarFixo': resultado = apagarPorId(ABA_FIXOS, e.parameter.id); break;
+      case 'listarLembretes': resultado = listarLembretes(e.parameter.inicio, e.parameter.fim); break;
+      case 'criarLembrete': resultado = criarLembrete(JSON.parse(e.parameter.dados)); break;
+      case 'apagarLembrete': resultado = apagarPorId(ABA_LEMBRETES, e.parameter.id); break;
+      case 'alternarStatusLembrete': resultado = alternarStatusLembrete(e.parameter.id); break;
+      case 'listarCategorias': resultado = listarCategorias(e.parameter.tipo); break;
+      case 'criarCategoria': resultado = criarCategoria(JSON.parse(e.parameter.dados)); break;
+      case 'apagarCategoria': resultado = apagarPorId(ABA_CATEGORIAS, e.parameter.id); break;
+      case 'obterConfiguracoes': resultado = obterConfiguracoes(); break;
+      case 'salvarConfiguracoes': resultado = salvarConfiguracoes(JSON.parse(e.parameter.dados)); break;
+      case 'importarDeTexto': resultado = importarDeTexto(e.parameter.texto, e.parameter.origemApp); break;
+      default: resultado = { ok: false, erro: 'Ação desconhecida: ' + acao };
+    }
+  } catch (err) {
+    resultado = { ok: false, erro: err.message };
+  }
+  return ContentService
+    .createTextOutput(JSON.stringify(resultado))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+// ---------- Utilidades ----------
+
+function hojeISO() {
+  return Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+}
+
+function formatarDataCelula(v) {
+  if (v instanceof Date) return Utilities.formatDate(v, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  return String(v).substring(0, 10);
+}
+
+function dentroDoIntervalo(data, inicio, fim) {
+  if (inicio && data < inicio) return false;
+  if (fim && data > fim) return false;
+  return true;
+}
+
+function apagarPorId(aba, id) {
+  var sh = getSheet(aba);
+  var valores = sh.getDataRange().getValues();
+  for (var i = 1; i < valores.length; i++) {
+    if (valores[i][0] === id) {
+      sh.deleteRow(i + 1);
+      return { ok: true };
+    }
+  }
+  return { ok: false, erro: 'Não encontrado' };
+}
+
+// ---------- Transações ----------
+// Colunas: ID(0) Data(1) Descricao(2) Tipo(3) Periodicidade(4) CategoriaTema(5) Valor(6) Origem(7) MesRef(8)
+
+function criarTransacao(d) {
+  var sh = getSheet(ABA_TRANSACOES);
+  var id = Utilities.getUuid();
+  var data = d.data || hojeISO();
+  sh.appendRow([id, data, d.descricao, d.tipo, d.periodicidade, d.categoriaTema || '', Number(d.valor), d.origem || 'Manual', data.substring(0, 7)]);
+  return { ok: true, id: id };
+}
+
+function listarTransacoes(inicio, fim) {
+  var sh = getSheet(ABA_TRANSACOES);
+  var valores = sh.getDataRange().getValues();
+  var linhas = [];
+  for (var i = 1; i < valores.length; i++) {
+    var r = valores[i];
+    var data = formatarDataCelula(r[1]);
+    if (dentroDoIntervalo(data, inicio, fim)) {
+      linhas.push({ id: r[0], data: data, descricao: r[2], tipo: r[3], periodicidade: r[4], categoriaTema: r[5], valor: r[6], origem: r[7] });
+    }
+  }
+  return { ok: true, transacoes: linhas };
+}
+
+function resumo(inicio, fim) {
+  var sh = getSheet(ABA_TRANSACOES);
+  var valores = sh.getDataRange().getValues();
+  var receitas = 0, gastos = 0;
+  var porPeriodicidade = { Fixa: 0, 'Variável': 0, 'Única': 0 };
+  var porCategoria = {};
+  for (var i = 1; i < valores.length; i++) {
+    var r = valores[i];
+    var data = formatarDataCelula(r[1]);
+    if (!dentroDoIntervalo(data, inicio, fim)) continue;
+    var valor = Number(r[6]);
+    if (r[3] === 'Receita') {
+      receitas += valor;
+    } else {
+      gastos += valor;
+      if (porPeriodicidade.hasOwnProperty(r[4])) porPeriodicidade[r[4]] += valor;
+      var cat = r[5] || 'Sem categoria';
+      porCategoria[cat] = (porCategoria[cat] || 0) + valor;
+    }
+  }
+  return { ok: true, receitas: receitas, gastos: gastos, saldo: receitas - gastos, porPeriodicidade: porPeriodicidade, porCategoria: porCategoria };
+}
+
+// ---------- Fixos (templates de transações recorrentes) ----------
+// Colunas: ID(0) Descricao(1) Tipo(2) Valor(3) DiaDoMes(4) Ativo(5) CategoriaTema(6)
+
+function criarFixo(d) {
+  var sh = getSheet(ABA_FIXOS);
+  var id = Utilities.getUuid();
+  sh.appendRow([id, d.descricao, d.tipo, Number(d.valor), Number(d.diaDoMes), true, d.categoriaTema || '']);
+  return { ok: true, id: id };
+}
+
+function listarFixos() {
+  var sh = getSheet(ABA_FIXOS);
+  var valores = sh.getDataRange().getValues();
+  var linhas = [];
+  for (var i = 1; i < valores.length; i++) {
+    var r = valores[i];
+    linhas.push({ id: r[0], descricao: r[1], tipo: r[2], valor: r[3], diaDoMes: r[4], ativo: r[5], categoriaTema: r[6] });
+  }
+  return { ok: true, fixos: linhas };
+}
+
+// ---------- Lembretes ----------
+
+function criarLembrete(d) {
+  var sh = getSheet(ABA_LEMBRETES);
+  var id = Utilities.getUuid();
+  var venc = d.vencimento || hojeISO();
+  sh.appendRow([id, d.descricao, d.tipo, Number(d.valor), venc, !!d.recorrente, 'Pendente', venc.substring(0, 7)]);
+  if (d.recorrente) {
+    var diaDoMes = new Date(venc + 'T00:00:00').getDate();
+    criarLembreteFixo({ descricao: d.descricao, tipo: d.tipo, valor: d.valor, diaDoMes: diaDoMes });
+  }
+  return { ok: true, id: id };
+}
+
+function listarLembretes(inicio, fim) {
+  var sh = getSheet(ABA_LEMBRETES);
+  var valores = sh.getDataRange().getValues();
+  var linhas = [];
+  for (var i = 1; i < valores.length; i++) {
+    var r = valores[i];
+    var venc = formatarDataCelula(r[4]);
+    if (dentroDoIntervalo(venc, inicio, fim)) {
+      linhas.push({ id: r[0], descricao: r[1], tipo: r[2], valor: r[3], vencimento: venc, recorrente: r[5], status: r[6] });
+    }
+  }
+  return { ok: true, lembretes: linhas };
+}
+
+function alternarStatusLembrete(id) {
+  var sh = getSheet(ABA_LEMBRETES);
+  var valores = sh.getDataRange().getValues();
+  for (var i = 1; i < valores.length; i++) {
+    if (valores[i][0] === id) {
+      var novo = valores[i][6] === 'Pendente' ? 'Concluído' : 'Pendente';
+      sh.getRange(i + 1, 7).setValue(novo);
+      return { ok: true, status: novo };
+    }
+  }
+  return { ok: false, erro: 'Não encontrado' };
+}
+
+function criarLembreteFixo(d) {
+  var sh = getSheet(ABA_LEMBRETES_FIXOS);
+  var id = Utilities.getUuid();
+  sh.appendRow([id, d.descricao, d.tipo, Number(d.valor), Number(d.diaDoMes), true]);
+  return { ok: true, id: id };
+}
+
+// ---------- Categorias temáticas ----------
+
+function listarCategorias(tipo) {
+  var sh = getSheet(ABA_CATEGORIAS);
+  var valores = sh.getDataRange().getValues();
+  var linhas = [];
+  for (var i = 1; i < valores.length; i++) {
+    var r = valores[i];
+    if (!tipo || r[3] === tipo) {
+      linhas.push({ id: r[0], nome: r[1], emoji: r[2], tipo: r[3], ativo: r[4] });
+    }
+  }
+  return { ok: true, categorias: linhas };
+}
+
+function criarCategoria(d) {
+  var sh = getSheet(ABA_CATEGORIAS);
+  var id = Utilities.getUuid();
+  sh.appendRow([id, d.nome, d.emoji, d.tipo, true]);
+  return { ok: true, id: id };
+}
+
+// ---------- Configurações (chave/valor) ----------
+
+function obterConfiguracoes() {
+  var sh = getSheet(ABA_CONFIGURACOES);
+  var valores = sh.getDataRange().getValues();
+  var config = {};
+  for (var i = 1; i < valores.length; i++) {
+    config[valores[i][0]] = valores[i][1];
+  }
+  return { ok: true, diaReferencia: Number(config.DiaReferencia || 1) };
+}
+
+// ---------- Importação automática via notificação (MacroDroid/Tasker) ----------
+
+function importarDeTexto(texto, origemApp) {
+  var interpretado = interpretarNotificacao(texto || '');
+  var sh = getSheet(ABA_TRANSACOES);
+  var id = Utilities.getUuid();
+  var data = hojeISO();
+  var descricaoFinal = interpretado.descricao + (origemApp ? ' (' + origemApp + ')' : '');
+  sh.appendRow([id, data, descricaoFinal, interpretado.tipo, 'Variável', '', interpretado.valor, 'Notificação', data.substring(0, 7)]);
+  return { ok: true, id: id, interpretado: interpretado };
+}
+
+// Heurística simples por palavras-chave + regex de valor. Não é perfeita pra
+// todos os bancos, mas cobre a maioria das notificações de Pix, compra no
+// cartão e pagamento de boleto. A descrição cai no texto original (limpo do
+// valor) quando não dá pra extrair algo mais específico.
+function interpretarNotificacao(texto) {
+  var t = String(texto);
+  var tLower = t.toLowerCase();
+
+  var matchValor = t.match(/R\$\s?(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2}|\d+)/);
+  var valor = 0;
+  if (matchValor) {
+    valor = Number(matchValor[1].replace(/\./g, '').replace(',', '.'));
+  }
+
+  var palavrasReceita = ['recebido', 'recebeu', 'depósito', 'deposito', 'estorno', 'creditado', 'crédito recebido'];
+  var palavrasDespesa = ['compra', 'pagamento', 'enviado', 'enviou', 'débito', 'debito', 'saque', 'fatura', 'boleto', 'transferência enviada', 'transferencia enviada'];
+
+  var tipo = 'Despesa';
+  for (var i = 0; i < palavrasReceita.length; i++) {
+    if (tLower.indexOf(palavrasReceita[i]) !== -1) { tipo = 'Receita'; break; }
+  }
+  // Palavras de despesa têm prioridade (evita falso positivo em frases como
+  // "pagamento recebido pelo lojista" interpretadas como receita do usuário).
+  for (var j = 0; j < palavrasDespesa.length; j++) {
+    if (tLower.indexOf(palavrasDespesa[j]) !== -1) { tipo = 'Despesa'; break; }
+  }
+
+  var descricao = matchValor ? t.replace(matchValor[0], '').trim() : t.trim();
+  descricao = descricao.replace(/\s{2,}/g, ' ').replace(/^[:\-–,.\s]+|[:\-–,.\s]+$/g, '');
+  descricao = descricao.substring(0, 120);
+  if (!descricao) descricao = 'Notificação bancária';
+
+  return { tipo: tipo, valor: valor, descricao: descricao };
+}
+
+
+  var sh = getSheet(ABA_CONFIGURACOES);
+  var valores = sh.getDataRange().getValues();
+  var chaves = { DiaReferencia: d.diaReferencia };
+  for (var chave in chaves) {
+    var encontrada = false;
+    for (var i = 1; i < valores.length; i++) {
+      if (valores[i][0] === chave) {
+        sh.getRange(i + 1, 2).setValue(chaves[chave]);
+        encontrada = true;
+        break;
+      }
+    }
+    if (!encontrada) sh.appendRow([chave, chaves[chave]]);
+  }
+  return { ok: true };
+}
+
+// ---------- Geração automática mensal ----------
+
+function gerarRecorrentesDoMes() {
+  gerarTransacoesFixas();
+  gerarLembretesRecorrentes();
+}
+
+function gerarTransacoesFixas() {
+  var fixosSheet = getSheet(ABA_FIXOS);
+  var transSheet = getSheet(ABA_TRANSACOES);
+  var fixos = fixosSheet.getDataRange().getValues();
+  var transacoes = transSheet.getDataRange().getValues();
+
+  var hoje = new Date();
+  var mesRefAtual = Utilities.formatDate(hoje, Session.getScriptTimeZone(), 'yyyy-MM');
+  var diaHoje = hoje.getDate();
+  var ultimoDiaMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).getDate();
+
+  for (var i = 1; i < fixos.length; i++) {
+    var f = fixos[i];
+    var descricao = f[1], tipo = f[2], valor = f[3], diaDoMes = f[4], ativo = f[5], categoriaTema = f[6];
+    if (ativo !== true) continue;
+
+    var diaAjustado = Math.min(diaDoMes, ultimoDiaMes);
+    if (diaHoje !== diaAjustado) continue;
+
+    var jaExiste = false;
+    for (var j = 1; j < transacoes.length; j++) {
+      if (transacoes[j][8] === mesRefAtual && transacoes[j][2] === descricao && transacoes[j][7] === 'Auto') {
+        jaExiste = true;
+        break;
+      }
+    }
+    if (jaExiste) continue;
+
+    var dataLanc = Utilities.formatDate(hoje, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+    transSheet.appendRow([Utilities.getUuid(), dataLanc, descricao, tipo, 'Fixa', categoriaTema || '', valor, 'Auto', mesRefAtual]);
+  }
+}
+
+function gerarLembretesRecorrentes() {
+  var fixosSheet = getSheet(ABA_LEMBRETES_FIXOS);
+  var lembSheet = getSheet(ABA_LEMBRETES);
+  var fixos = fixosSheet.getDataRange().getValues();
+  var lembretes = lembSheet.getDataRange().getValues();
+
+  var hoje = new Date();
+  var mesRefAtual = Utilities.formatDate(hoje, Session.getScriptTimeZone(), 'yyyy-MM');
+  var ultimoDiaMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).getDate();
+
+  for (var i = 1; i < fixos.length; i++) {
+    var f = fixos[i];
+    var descricao = f[1], tipo = f[2], valor = f[3], diaDoMes = f[4], ativo = f[5];
+    if (ativo !== true) continue;
+
+    var jaExiste = false;
+    for (var j = 1; j < lembretes.length; j++) {
+      if (lembretes[j][7] === mesRefAtual && lembretes[j][1] === descricao) {
+        jaExiste = true;
+        break;
+      }
+    }
+    if (jaExiste) continue;
+
+    var diaAjustado = Math.min(diaDoMes, ultimoDiaMes);
+    var vencimento = new Date(hoje.getFullYear(), hoje.getMonth(), diaAjustado);
+    var vencISO = Utilities.formatDate(vencimento, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+    lembSheet.appendRow([Utilities.getUuid(), descricao, tipo, valor, vencISO, true, 'Pendente', mesRefAtual]);
+  }
+}
+`;
+
+document.getElementById('btn-copiar-codigo').addEventListener('click', async () => {
+  const btn = document.getElementById('btn-copiar-codigo');
+  try {
+    await navigator.clipboard.writeText(CODE_GS);
+  } catch (err) {
+    const area = document.createElement('textarea');
+    area.value = CODE_GS;
+    document.body.appendChild(area);
+    area.select();
+    document.execCommand('copy');
+    document.body.removeChild(area);
+  }
+  const textoOriginal = btn.textContent;
+  btn.textContent = 'Copiado!';
+  setTimeout(() => { btn.textContent = textoOriginal; }, 2000);
+});
+
+// ---------- Configuração automática via Google (OAuth) ----------
+let tokenClient = null;
+let googleAccessToken = null;
+const elStatusAuto = document.getElementById('status-config-auto');
+const elBtnAuto = document.getElementById('btn-config-auto');
+
+function clientIdConfigurado(){
+  return GOOGLE_CLIENT_ID && !GOOGLE_CLIENT_ID.includes('SEU_CLIENT_ID_AQUI');
+}
+
+function inicializarGoogleAuth(){
+  if (tokenClient) return;
+  if (!clientIdConfigurado() || !(window.google && google.accounts && google.accounts.oauth2)) return;
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: GOOGLE_CLIENT_ID,
+    scope: GOOGLE_SCOPES,
+    callback: async (resp) => {
+      if (resp.error){
+        atualizarStatusAuto('erro', '❌ Permissão não concedida (' + resp.error + ').');
+        elBtnAuto.disabled = false;
+        return;
+      }
+      googleAccessToken = resp.access_token;
+      await rodarProvisionamento();
+    }
+  });
+}
+
+function atualizarStatusAuto(tipo, texto){
+  elStatusAuto.classList.remove('oculto');
+  elStatusAuto.className = 'status-auto status-' + tipo;
+  elStatusAuto.textContent = texto;
+}
+
+function mostrarSucessoComUrl(url){
+  elStatusAuto.classList.remove('oculto');
+  elStatusAuto.className = 'status-auto status-sucesso';
+  elStatusAuto.innerHTML = `
+    ✅ Tudo certo! Sua planilha está pronta e conectada.<br><br>
+    <span style="font-size:0.68rem; text-transform:uppercase; letter-spacing:0.04em; opacity:0.85;">URL da sua planilha — guarde pra usar em outro celular/computador</span>
+    <div style="display:flex; gap:8px; margin-top:6px;">
+      <input type="text" id="input-url-sucesso" readonly value="${url}" style="margin-bottom:0; font-size:0.7rem; color:var(--text); background:var(--surface-2);" onclick="this.select()">
+      <button type="button" id="btn-copiar-url-sucesso" style="flex-shrink:0;">Copiar</button>
+    </div>
+  `;
+  document.getElementById('btn-copiar-url-sucesso').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(url); } catch (err) {
+      const input = document.getElementById('input-url-sucesso');
+      input.select();
+      document.execCommand('copy');
+    }
+    const btn = document.getElementById('btn-copiar-url-sucesso');
+    btn.textContent = 'Copiado!';
+    setTimeout(() => { btn.textContent = 'Copiar'; }, 2000);
+  });
+}
+
+if (elBtnAuto) elBtnAuto.addEventListener('click', () => {
+  if (!clientIdConfigurado()){
+    alert('Este app ainda não tem um Client ID do Google configurado pelo desenvolvedor. Use a configuração manual abaixo.');
+    return;
+  }
+  if (!tokenClient) inicializarGoogleAuth();
+  if (!tokenClient){
+    atualizarStatusAuto('erro', '❌ O login do Google ainda não carregou. Aguarde alguns segundos e tente de novo.');
+    return;
+  }
+  elBtnAuto.disabled = true;
+  atualizarStatusAuto('info', 'Abrindo o login do Google...');
+  tokenClient.requestAccessToken();
+});
+
+async function chamarGoogleAPI(url, opts){
+  opts = opts || {};
+  const resp = await fetch(url, {
+    method: opts.method || 'GET',
+    headers: Object.assign({
+      'Authorization': 'Bearer ' + googleAccessToken,
+      'Content-Type': 'application/json'
+    }, opts.headers || {}),
+    body: opts.body ? JSON.stringify(opts.body) : undefined
+  });
+  const dados = await resp.json();
+  if (!resp.ok) throw new Error((dados.error && dados.error.message) || ('Erro na API do Google (' + resp.status + ')'));
+  return dados;
+}
+
+async function rodarProvisionamento(){
+  try {
+    atualizarStatusAuto('info', '1/4 — Criando sua planilha no Google Sheets...');
+    const planilha = await chamarGoogleAPI('https://sheets.googleapis.com/v4/spreadsheets', {
+      method: 'POST',
+      body: { properties: { title: 'DuC Finanças' } }
+    });
+    const spreadsheetId = planilha.spreadsheetId;
+
+    atualizarStatusAuto('info', '2/4 — Criando o script vinculado à planilha...');
+    const projeto = await chamarGoogleAPI('https://script.googleapis.com/v1/projects', {
+      method: 'POST',
+      body: { title: 'DuC Finanças - Backend', parentId: spreadsheetId }
+    });
+    const scriptId = projeto.scriptId;
+
+    atualizarStatusAuto('info', '3/4 — Enviando o código e publicando como app da web...');
+    const manifest = {
+      timeZone: 'America/Sao_Paulo',
+      exceptionLogging: 'STACKDRIVER',
+      runtimeVersion: 'V8',
+      webapp: { executeAs: 'USER_DEPLOYING', access: 'ANYONE_ANONYMOUS' }
+    };
+    await chamarGoogleAPI(`https://script.googleapis.com/v1/projects/${scriptId}/content`, {
+      method: 'PUT',
+      body: { files: [
+        { name: 'Code', type: 'SERVER_JS', source: CODE_GS },
+        { name: 'appsscript', type: 'JSON', source: JSON.stringify(manifest) }
+      ]}
+    });
+
+    const versao = await chamarGoogleAPI(`https://script.googleapis.com/v1/projects/${scriptId}/versions`, {
+      method: 'POST',
+      body: { description: 'Provisionamento automático' }
+    });
+    const deploy = await chamarGoogleAPI(`https://script.googleapis.com/v1/projects/${scriptId}/deployments`, {
+      method: 'POST',
+      body: { versionNumber: versao.versionNumber, manifestFileName: 'appsscript', description: 'Deploy automático' }
+    });
+    const webAppEntry = (deploy.entryPoints || []).find(ep => ep.webApp);
+    const urlExec = webAppEntry && webAppEntry.webApp && webAppEntry.webApp.url;
+    if (!urlExec) throw new Error('A implantação não retornou uma URL de app da web.');
+
+    atualizarStatusAuto('info', '4/4 — Testando a conexão (pode levar até 1 minuto na primeira vez)...');
+    let teste = null;
+    for (let tentativa = 0; tentativa < 6 && !(teste && teste.ok); tentativa++){
+      await new Promise(r => setTimeout(r, 6000));
+      teste = await fetch(urlExec + '?action=obterConfiguracoes').then(r => r.json()).catch(() => null);
+    }
+
+    inputConfigUrl.value = urlExec;
+    if (teste && teste.ok){
+      API_URL = urlExec;
+      localStorage.setItem('duc_financas_api_url', urlExec);
+      elAviso.style.display = 'none';
+      mostrarSucessoComUrl(urlExec);
+      await aposConectarAPI();
+    } else {
+      atualizarStatusAuto('aviso', '⚠️ A planilha e o script foram criados, mas a conexão ainda não respondeu. A URL já foi preenchida abaixo — clique em "Salvar URL" para tentar de novo em um instante.');
+    }
+  } catch (err) {
+    atualizarStatusAuto('erro', '❌ Algo deu errado: ' + err.message + '. Você pode tentar de novo ou usar a configuração manual abaixo.');
+  } finally {
+    elBtnAuto.disabled = false;
+  }
+}
+
+if (!clientIdConfigurado()){
+  document.getElementById('btn-config-auto').classList.add('oculto');
+  document.getElementById('dica-config-auto').classList.add('oculto');
+  document.getElementById('btn-toggle-manual').classList.add('oculto');
+  document.querySelector('.divisor-ou').classList.add('oculto');
+  document.getElementById('bloco-manual').classList.remove('oculto');
+}
+
+document.getElementById('btn-toggle-manual').addEventListener('click', () => {
+  document.getElementById('bloco-manual').classList.toggle('oculto');
+});
+
+// ---------- Modal de configurações ----------
+function abrirModalConfig(){
+  inputConfigUrl.value = API_URL;
+  modalConfig.classList.add('aberto');
+}
+function fecharModalConfig(){ modalConfig.classList.remove('aberto'); }
+
+document.getElementById('btn-config').addEventListener('click', abrirModalConfig);
+document.getElementById('aviso-abrir-config').addEventListener('click', abrirModalConfig);
+document.getElementById('modal-fechar').addEventListener('click', fecharModalConfig);
+modalConfig.addEventListener('click', e => { if (e.target === modalConfig) fecharModalConfig(); });
+
+document.querySelectorAll('.modal-tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.modal-tab-btn').forEach(b => b.classList.remove('ativo'));
+    document.querySelectorAll('.modal-conteudo').forEach(c => c.classList.remove('ativo'));
+    btn.classList.add('ativo');
+    document.querySelector(`.modal-conteudo[data-mconteudo="${btn.dataset.mtab}"]`).classList.add('ativo');
+  });
+});
+
+document.getElementById('modal-salvar-url').addEventListener('click', async () => {
+  const url = inputConfigUrl.value.trim();
+  if (!url) { alert('Cole a URL do Apps Script.'); return; }
+  API_URL = url;
+  localStorage.setItem('duc_financas_api_url', url);
+  elAviso.style.display = 'none';
+  await aposConectarAPI();
+});
+
+// ---------- Categorias ----------
+async function carregarCategorias(){
+  const [desp, rec] = await Promise.all([
+    chamarAPI({ action: 'listarCategorias', tipo: 'Despesa' }),
+    chamarAPI({ action: 'listarCategorias', tipo: 'Receita' })
+  ]);
+  categoriasCache.Despesa = desp.categorias || [];
+  categoriasCache.Receita = rec.categorias || [];
+  popularSelectCategoria();
+  renderCategoriasConfig();
+}
+
+function popularSelectCategoria(){
+  const tipo = document.getElementById('t-tipo').value;
+  const sel = document.getElementById('t-categoria-tema');
+  const lista = categoriasCache[tipo] || [];
+  const valorAtual = sel.value;
+  sel.innerHTML = '<option value="">Sem categoria</option>' + lista.map(c => `<option value="${c.emoji} ${c.nome}">${c.emoji} ${c.nome}</option>`).join('');
+  if ([...sel.options].some(o => o.value === valorAtual)) sel.value = valorAtual;
+}
+document.getElementById('t-tipo').addEventListener('change', popularSelectCategoria);
+
+function renderCategoriasConfig(){
+  renderCatLista('cat-lista-despesa', categoriasCache.Despesa);
+  renderCatLista('cat-lista-receita', categoriasCache.Receita);
+}
+function renderCatLista(elId, lista){
+  const el = document.getElementById(elId);
+  if (!lista.length){ el.innerHTML = '<span class="cat-vazio">Nenhuma categoria.</span>'; return; }
+  el.innerHTML = lista.map(c => `<span class="cat-chip">${c.emoji} ${c.nome}<button data-id="${c.id}">✕</button></span>`).join('');
+  el.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      await chamarAPI({ action: 'apagarCategoria', id: btn.dataset.id }, 'POST');
+      await carregarCategorias();
+    });
+  });
+}
+
+document.querySelectorAll('.cat-add-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.getElementById('nc-tipo').value = btn.dataset.tipo;
+    document.getElementById('form-nova-categoria').classList.remove('escondido');
+  });
+});
+document.getElementById('nc-cancelar').addEventListener('click', () => document.getElementById('form-nova-categoria').classList.add('escondido'));
+document.getElementById('form-nova-categoria').addEventListener('submit', async e => {
+  e.preventDefault();
+  const tipo = document.getElementById('nc-tipo').value;
+  const emoji = document.getElementById('nc-emoji').value.trim() || '🏷️';
+  const nome = document.getElementById('nc-nome').value.trim();
+  if (!nome) return;
+  await chamarAPI({ action: 'criarCategoria', dados: JSON.stringify({ nome, emoji, tipo }) }, 'POST');
+  e.target.reset();
+  e.target.classList.add('escondido');
+  await carregarCategorias();
+});
+
+// ---------- Dia de referência ----------
+function renderDiaReferencia(){
+  const grade = document.getElementById('dia-ref-grade');
+  grade.innerHTML = diasReferenciaPredefinidos.map(d => `
+    <div class="dia-ref-item ${d.dia === diaReferenciaAtual ? 'selecionado' : ''}" data-dia="${d.dia}">
+      Dia ${d.dia}<span class="desc">${d.desc}</span>
+    </div>
+  `).join('');
+  grade.querySelectorAll('.dia-ref-item').forEach(item => {
+    item.addEventListener('click', () => {
+      diaReferenciaAtual = Number(item.dataset.dia);
+      document.getElementById('dia-ref-outro').value = '';
+      renderDiaReferencia();
+    });
+  });
+  const ehPredefinido = diasReferenciaPredefinidos.some(d => d.dia === diaReferenciaAtual);
+  document.getElementById('dia-ref-outro').value = ehPredefinido ? '' : diaReferenciaAtual;
+}
+document.getElementById('dia-ref-outro').addEventListener('input', e => {
+  const v = Number(e.target.value);
+  if (v >= 1 && v <= 31){ diaReferenciaAtual = v; renderDiaReferencia(); }
+});
+document.getElementById('modal-salvar-referencia').addEventListener('click', async () => {
+  await chamarAPI({ action: 'salvarConfiguracoes', dados: JSON.stringify({ diaReferencia: diaReferenciaAtual }) }, 'POST');
+  calcularPeriodoPadrao();
+  carregarTudo();
+  fecharModalConfig();
+});
+
+// ---------- Importação por notificação ----------
+document.getElementById('btn-copiar-url-notificacao').addEventListener('click', async (e) => {
+  if (!API_URL) { alert('Configure a URL do Apps Script primeiro, na aba Banco de Dados.'); return; }
+  const url = API_URL + '?action=importarDeTexto&texto=';
+  try {
+    await navigator.clipboard.writeText(url);
+  } catch (err) {
+    const area = document.createElement('textarea');
+    area.value = url;
+    document.body.appendChild(area);
+    area.select();
+    document.execCommand('copy');
+    document.body.removeChild(area);
+  }
+  const btn = e.currentTarget;
+  const textoOriginal = btn.textContent;
+  btn.textContent = 'Copiado!';
+  setTimeout(() => { btn.textContent = textoOriginal; }, 2000);
+});
+
+// ---------- Abas principais ----------
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('ativo'));
+    document.querySelectorAll('.aba').forEach(a => a.classList.remove('ativa'));
+    btn.classList.add('ativo');
+    document.getElementById('aba-' + btn.dataset.aba).classList.add('ativa');
+    const subtitulos = { transacoes:'Gestão financeira', resumo:'Gastos e receitas', lembretes:'Pagamentos e cobranças' };
+    document.getElementById('subtitulo').textContent = subtitulos[btn.dataset.aba];
+  });
+});
+
+// ---------- Carregamento geral ----------
+async function carregarTudo(){
+  const inicio = elInicio.value, fim = elFim.value;
+  const [resumoDados, transacoes, lembretes] = await Promise.all([
+    chamarAPI({ action: 'resumo', inicio, fim }),
+    chamarAPI({ action: 'listarTransacoes', inicio, fim }),
+    chamarAPI({ action: 'listarLembretes', inicio, fim })
+  ]);
+  renderCards(resumoDados);
+  renderResumoTab(resumoDados);
+  renderTransacoes(transacoes.transacoes || []);
+  renderLembretes(lembretes.lembretes || []);
+}
+
+function renderCards(r){
+  if (!r || !r.ok) return;
+  document.getElementById('card-receitas').textContent = formatarMoeda(r.receitas);
+  document.getElementById('card-gastos').textContent = formatarMoeda(r.gastos);
+  const elSaldo = document.getElementById('card-saldo');
+  elSaldo.textContent = (r.saldo >= 0 ? '+ ' : '- ') + formatarMoeda(Math.abs(r.saldo));
+  elSaldo.classList.toggle('pos', r.saldo >= 0);
+  elSaldo.classList.toggle('neg', r.saldo < 0);
+}
+
+// ---------- Transações ----------
+const formTransacao = document.getElementById('form-transacao');
+const corpoTransacoes = document.getElementById('corpo-transacoes');
+
+document.getElementById('btn-nova-transacao').addEventListener('click', () => formTransacao.classList.toggle('escondido'));
+document.getElementById('t-cancelar').addEventListener('click', () => formTransacao.classList.add('escondido'));
+document.getElementById('t-periodicidade').addEventListener('change', e => {
+  document.getElementById('t-recorrente-wrap').style.display = e.target.value === 'Fixa' ? 'block' : 'none';
+});
+
+formTransacao.addEventListener('submit', async e => {
+  e.preventDefault();
+  const tipo = document.getElementById('t-tipo').value;
+  const periodicidade = document.getElementById('t-periodicidade').value;
+  const categoriaTema = document.getElementById('t-categoria-tema').value;
+  const data = document.getElementById('t-data').value;
+  const descricao = document.getElementById('t-descricao').value.trim();
+  const valor = document.getElementById('t-valor').value;
+  const recorrente = periodicidade === 'Fixa' && document.getElementById('t-recorrente').checked;
+
+  await chamarAPI({ action: 'criarTransacao', dados: JSON.stringify({ tipo, periodicidade, categoriaTema, data, descricao, valor, origem: 'Manual' }) }, 'POST');
+  if (recorrente){
+    const dia = new Date(data + 'T00:00:00').getDate();
+    await chamarAPI({ action: 'criarFixo', dados: JSON.stringify({ tipo, descricao, valor, diaDoMes: dia, categoriaTema }) }, 'POST');
+  }
+  formTransacao.reset();
+  formTransacao.classList.add('escondido');
+  document.getElementById('t-recorrente-wrap').style.display = 'none';
+  document.getElementById('t-data').value = formatarISOLocal(new Date());
+  popularSelectCategoria();
+  carregarTudo();
+});
+
+function renderTransacoes(lista){
+  corpoTransacoes.innerHTML = '';
+  if (lista.length === 0){
+    corpoTransacoes.innerHTML = '<tr><td colspan="7" class="vazio">Nenhuma transação neste período.</td></tr>';
+    return;
+  }
+  lista.sort((a,b) => new Date(b.data) - new Date(a.data)).forEach(t => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="tick-cel"><span class="tick-bar ${t.tipo}"></span></td>
+      <td>${formatarDataBR(t.data)}</td>
+      <td>${t.descricao}</td>
+      <td><span class="tag-pilha">${t.categoriaTema ? `<span class="tag">${t.categoriaTema}</span>` : ''}<span class="tag">${t.periodicidade}</span></span></td>
+      <td><span class="tag">${t.origem}</span></td>
+      <td class="valor ${t.tipo}">${formatarMoeda(t.valor)}</td>
+      <td><button class="apagar-btn" data-id="${t.id}">✕</button></td>
+    `;
+    corpoTransacoes.appendChild(tr);
+  });
+  corpoTransacoes.querySelectorAll('.apagar-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('Apagar esta transação?')) return;
+      await chamarAPI({ action: 'apagarTransacao', id: btn.dataset.id }, 'POST');
+      carregarTudo();
+    });
+  });
+}
+
+// ---------- Importar CSV ----------
+document.getElementById('btn-importar').addEventListener('click', () => document.getElementById('arquivo-importar').click());
+document.getElementById('arquivo-importar').addEventListener('change', async e => {
+  const arquivo = e.target.files[0];
+  if (!arquivo) return;
+  const texto = await arquivo.text();
+  const linhas = texto.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  let importadas = 0, erros = 0;
+  for (const linha of linhas){
+    const partes = linha.split(/[,;]/).map(p => p.trim());
+    if (partes.length < 5) { erros++; continue; }
+    const [data, descricao, tipo, periodicidade, valor] = partes;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) { erros++; continue; }
+    await chamarAPI({ action: 'criarTransacao', dados: JSON.stringify({ data, descricao, tipo, periodicidade, valor, origem: 'Manual' }) }, 'POST');
+    importadas++;
+  }
+  alert(`Importação concluída: ${importadas} transações importadas` + (erros ? `, ${erros} linhas ignoradas (formato esperado: data YYYY-MM-DD,descrição,tipo,periodicidade,valor).` : '.'));
+  e.target.value = '';
+  carregarTudo();
+});
+
+// ---------- Resumo ----------
+function renderResumoTab(r){
+  const el = document.getElementById('conteudo-resumo');
+  if (!r || !r.ok || (r.receitas === 0 && r.gastos === 0)){
+    el.innerHTML = '<div class="vazio">Nenhuma transação encontrada neste período.</div>';
+    return;
+  }
+  const maiorPeriodicidade = Math.max(r.porPeriodicidade.Fixa, r.porPeriodicidade['Variável'], r.porPeriodicidade['Única'], 1);
+  const maiorGeral = Math.max(r.receitas, r.gastos, 1);
+  const categoriasOrdenadas = Object.entries(r.porCategoria || {}).sort((a,b) => b[1]-a[1]);
+  const maiorCategoria = Math.max(...categoriasOrdenadas.map(c => c[1]), 1);
+
+  let blocoCategoria = '';
+  if (categoriasOrdenadas.length){
+    blocoCategoria = `
+      <div class="resumo-bloco">
+        <div class="resumo-titulo">Gastos por categoria</div>
+        ${categoriasOrdenadas.map(([nome, valor]) => barraLinha(nome, valor, maiorCategoria)).join('')}
+      </div>`;
+  }
+
+  el.innerHTML = `
+    <div class="resumo-bloco">
+      <div class="resumo-titulo">Receitas x Gastos</div>
+      ${barraLinha('Receitas', r.receitas, maiorGeral)}
+      ${barraLinha('Gastos', r.gastos, maiorGeral)}
+    </div>
+    ${blocoCategoria}
+    <div class="resumo-bloco">
+      <div class="resumo-titulo">Gastos por periodicidade</div>
+      ${barraLinha('Fixa', r.porPeriodicidade.Fixa, maiorPeriodicidade)}
+      ${barraLinha('Variável', r.porPeriodicidade['Variável'], maiorPeriodicidade)}
+      ${barraLinha('Única', r.porPeriodicidade['Única'], maiorPeriodicidade)}
+    </div>
+  `;
+}
+function barraLinha(rotulo, valor, maior){
+  const pct = Math.min(100, Math.round((valor / maior) * 100));
+  return `
+    <div class="barra-linha">
+      <div class="barra-rotulo" title="${rotulo}">${rotulo}</div>
+      <div class="barra-fundo"><div class="barra-preenchida" style="width:${pct}%"></div></div>
+      <div class="barra-valor">${formatarMoeda(valor)}</div>
+    </div>
+  `;
+}
+
+// ---------- Lembretes ----------
+const formLembrete = document.getElementById('form-lembrete');
+const listaLembretes = document.getElementById('lista-lembretes');
+
+document.getElementById('btn-novo-lembrete').addEventListener('click', () => formLembrete.classList.toggle('escondido'));
+document.getElementById('le-cancelar').addEventListener('click', () => formLembrete.classList.add('escondido'));
+
+formLembrete.addEventListener('submit', async e => {
+  e.preventDefault();
+  const tipo = document.getElementById('le-tipo').value;
+  const vencimento = document.getElementById('le-vencimento').value;
+  const descricao = document.getElementById('le-descricao').value.trim();
+  const valor = document.getElementById('le-valor').value;
+  const recorrente = document.getElementById('le-recorrente').checked;
+
+  await chamarAPI({ action: 'criarLembrete', dados: JSON.stringify({ tipo, vencimento, descricao, valor, recorrente }) }, 'POST');
+  formLembrete.reset();
+  formLembrete.classList.add('escondido');
+  carregarTudo();
+});
+
+function renderLembretes(lista){
+  listaLembretes.innerHTML = '';
+  if (lista.length === 0){
+    listaLembretes.innerHTML = `<div class="vazio">Nenhum lembrete de pagamento ou cobrança cadastrado.<br>Adicione lembretes para controlar melhor seus pagamentos e cobranças recorrentes ou esporádicos, fixos ou variáveis.</div>`;
+    return;
+  }
+  lista.sort((a,b) => new Date(a.vencimento) - new Date(b.vencimento)).forEach(le => {
+    const div = document.createElement('div');
+    div.className = 'lembrete-item';
+    div.innerHTML = `
+      <div class="lembrete-info">
+        <span class="tick-bar ${le.tipo}" style="width:4px; height:28px; display:inline-block; border-radius:2px;"></span>
+        <div class="lembrete-meta">
+          <span class="desc">${le.descricao} ${le.recorrente ? '<span class="tag">mensal</span>' : ''}</span>
+          <span class="venc">vence ${formatarDataBR(le.vencimento)}</span>
+        </div>
+      </div>
+      <div class="lembrete-acoes">
+        <span class="valor ${le.tipo}" style="font-family:'JetBrains Mono', monospace;">${formatarMoeda(le.valor)}</span>
+        <button class="status-btn ${le.status}" data-id="${le.id}">${le.status}</button>
+        <button class="apagar-btn" data-id="${le.id}">✕</button>
+      </div>
+    `;
+    listaLembretes.appendChild(div);
+  });
+  listaLembretes.querySelectorAll('.status-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      await chamarAPI({ action: 'alternarStatusLembrete', id: btn.dataset.id }, 'POST');
+      carregarTudo();
+    });
+  });
+  listaLembretes.querySelectorAll('.apagar-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('Apagar este lembrete?')) return;
+      await chamarAPI({ action: 'apagarLembrete', id: btn.dataset.id }, 'POST');
+      carregarTudo();
+    });
+  });
+}
+
+elInicio.addEventListener('change', carregarTudo);
+elFim.addEventListener('change', carregarTudo);
+
+// ---------- Inicialização ----------
+async function aposConectarAPI(){
+  const config = await chamarAPI({ action: 'obterConfiguracoes' });
+  if (config && config.ok) diaReferenciaAtual = config.diaReferencia || 1;
+  renderDiaReferencia();
+  calcularPeriodoPadrao();
+  await carregarCategorias();
+  carregarTudo();
+}
+
+(async function iniciar(){
+  document.getElementById('t-data').value = formatarISOLocal(new Date());
+  document.getElementById('le-vencimento').value = formatarISOLocal(new Date());
+  renderDiaReferencia();
+  calcularPeriodoPadrao();
+  if (!API_URL){
+    elAviso.style.display = 'block';
+    return;
+  }
+  await aposConectarAPI();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,3218 @@
+<!--
+================================================================================
+  Finanças.DuC — index.html
+  Versão atual: V00.042  (ver <title> na linha 6)
+
+  🔗 LINK DO APP (GitHub Pages):
+      https://ductrabalho.github.io/Financas.DuC/
+      Repositório: github.com/ductrabalho/Financas.DuC
+
+  ⚠️  REGRA DE EDIÇÃO: A cada alteração no código, INCREMENTAR o número
+      de versão (ex.: V00.033 → V00.034) em UM ÚNICO lugar:
+        • O <title>Finanças.DuC V00.XXX</title>
+      O badge exibido na tela (#badge-versao) lê a versão do <title>
+      automaticamente via APP_VERSAO — não há número duplicado no HTML.
+      Isso garante rastreabilidade de cada mudança.
+================================================================================
+
+  SUMÁRIO DO ARQUIVO
+  ──────────────────────────────────────────────────────────────────────────────
+  [HTML / ESTRUTURA]
+
+  L.1–9      │ Cabeçalho do documento
+              │   DOCTYPE, <html>, <head>, <meta>, links de fontes (Google
+              │   Fonts) e tag <script> do Google Identity Services (GSI)
+
+  L.10–600   │ ESTILOS CSS  ─────────────────── bloco <style> ───────────────
+              │   :root       – variáveis de cor e tipografia
+              │   body/.wrap  – layout geral
+              │   header/h1   – cabeçalho, logo, versão, subtítulo
+              │   .btn-config / .icon-btn / .btn-plus / .btn-gear
+              │               – botões de ação do header
+              │   .dropdown   – menu dropdown do botão "+"
+              │   .modal-overlay / .modal
+              │               – modal de configurações (overlay + caixa)
+              │   .modal-tabs / .modal-tab-btn / .modal-conteudo
+              │               – abas internas do modal
+              │   .cat-*      – chips de categoria (gastos/ganhos)
+              │   .dia-ref-*  – grade de seleção do dia de referência
+              │   .cards      – cards de saldo / receita / gasto
+              │   .tabs / .tab-btn / .aba
+              │               – abas principais (Transações / Resumo / Lembretes)
+              │   .filtro-datas – inputs De/Até
+              │   .loading-overlay
+              │               – overlay de carregamento com spinner
+              │   button / form / table / .tag / .apagar-btn
+              │               – elementos de formulário e tabela
+              │   .resumo-* / .barra-*
+              │               – gráfico de barras do Resumo
+              │   .lembrete-* – itens da lista de Lembretes
+              │   #tela-entrada / .bg-orb / .logo-grande / .login-*
+              │               – tela de login / provisionamento
+              │   .tela-sec   – telas secundárias (centralização vertical)
+
+  L.602–609  │ OVERLAY DE CARREGAMENTO (HTML)
+              │   Div fixa com spinner, texto e botão "Cancelar"
+
+  L.610–920  │ BLOCO PRINCIPAL  ──────── div.wrap ──────────────────────────
+              │
+              │   L.613–704   MODAL DE CONFIGURAÇÕES
+              │               • Aba "Banco de Dados":
+              │                   – Config automática via Google (btn-config-auto)
+              │                   – Config manual (bloco-manual, URL do Apps Script)
+              │               • Aba "Categorias":
+              │                   – Lista chips Despesa / Receita
+              │                   – Formulário de nova categoria (form-nova-categoria)
+              │               • Aba "Dia de Referência":
+              │                   – Grade de dias predefinidos
+              │                   – Input "Outro dia"
+              │               • Aba "Notificações":
+              │                   – Link MacroDroid (Play Store)
+              │                   – Botão copiar URL de importação
+              │                   – Instruções passo a passo
+              │
+              │   L.706–920   TELAS / PÁGINAS
+              │               • #tela-entrada  – tela de login/provisioning
+              │                   (logo, botão Google, opção manual,
+              │                    tela de loading/passos do login)
+              │               • (restante do wrap: app-conectado — header +
+              │                  cards + abas é renderizado dinamicamente
+              │                  via JS, o HTML estático está nesse bloco)
+
+  ──────────────────────────────────────────────────────────────────────────────
+  [JAVASCRIPT]  ──────────── bloco <script>  L.923–2595 ─────────────────────
+
+  L.924–949  │ CONFIGURAÇÃO GLOBAL
+              │   API_URL, diaReferenciaAtual, categoriasCache
+              │   GOOGLE_CLIENT_ID, GOOGLE_SCOPES
+              │   diasReferenciaPredefinidos
+
+  L.951–982  │ REFERÊNCIAS DOM + FUNÇÕES UTILITÁRIAS BÁSICAS
+              │   elInicio, elFim, modalConfig, inputConfigUrl
+              │   formatarISOLocal(), calcularPeriodoPadrao()
+              │   formatarMoeda(), formatarDataBR()
+
+  L.984–1042 │ OVERLAY DE CARREGAMENTO + chamarAPI()
+              │   bloquearTeclas(), mostrarLoading(), esconderLoading()
+              │   chamarAPI() — wrapper de fetch com suporte a loading/abort
+
+  L.1043–1552│ CÓDIGO DO BACKEND  (string CODE_GS — conteúdo do Code.gs)
+              │   ⚠️  NÃO EDITAR esta seção sem necessidade — é uma string
+              │       literal copiada para o Apps Script do usuário.
+              │   • Variáveis de nome das abas da planilha
+              │   • inicializar(), criarAbaSeNaoExiste(), popularCategoriasPadrao()
+              │   • configurarTrigger(), onOpen(), configurarTudo()
+              │   • garantirInicializado()
+              │   • doGet() / doPost() / handleRequest()  — roteamento
+              │   • hojeISO(), formatarDataCelula(), …  — utilitários
+              │   • Funções: Transações, Fixos, Lembretes, Categorias,
+              │     Configurações, Importação por notificação,
+              │     Geração automática mensal
+
+  L.1554–1936│ CONFIGURAÇÃO AUTOMÁTICA VIA GOOGLE (OAuth / provisioning)
+              │   inicializarGoogleAuth(), obterToken()
+              │   buscarPlanilhaExistente(), buscarScriptVinculado(),
+              │   buscarDeployAtivo(), criarSpreadsheet(), criarScript(),
+              │   criarDeploy(), aguardarConexaoEFinalizar()
+              │   atualizarStatusEntrada(), salvarProvisionamentoPendente(),
+              │   obterProvisionamentoPendente()
+
+  L.1937–2025│ TELA INICIAL — ENTRAR / CRIAR CONTA
+              │   mostrarTela(), renderDiaReferencia()
+              │   Lógica da tela de entrada: botão Google, URL manual,
+              │   salvarURL(), botão de entrar
+
+  L.2026–2151│ MESCLAGEM DE PLANILHAS DO BANCO DE DADOS
+              │   buscarPlanilhasFinancasDuC(), funções de merge de dados
+
+  L.2152–2168│ MODAL DE CONFIGURAÇÕES — listeners de abertura/fechamento
+
+  L.2169–2225│ HEADER NOVO (menu +, logout, dropdown)
+              │   Lógica do botão "+" (abrir dropdown: Despesa / Receita)
+              │   Lógica do botão de logout
+
+  L.2226–2282│ CATEGORIAS — renderização e gestão
+              │   carregarCategorias(), renderCategorias()
+              │   Listeners dos botões "Adicionar" e remoção de chips
+
+  L.2283–2311│ DIA DE REFERÊNCIA — grade de opções
+              │   renderDiaReferencia(), salvarDiaReferencia()
+
+  L.2312–2331│ IMPORTAÇÃO POR NOTIFICAÇÃO — botão "Copiar URL"
+
+  L.2332–2343│ ABAS PRINCIPAIS — lógica de troca de aba
+
+  L.2344–2367│ CARREGAMENTO GERAL
+              │   carregarTudo() — chama todas as funções de render
+              │   carregarCategorias()
+
+  L.2368–2428│ TRANSAÇÕES
+              │   renderTransacoes(lista) — monta tabela, botão apagar
+
+  L.2429–2449│ IMPORTAR CSV
+              │   Listener do input file, parse e envio linha a linha
+
+  L.2450–2496│ RESUMO
+              │   renderResumoTab(r), barraLinha()
+
+  L.2497–2560│ LEMBRETES
+              │   formLembrete, renderLembretes(lista)
+              │   Listeners: novo lembrete, cancelar, submit, alternar status
+
+  L.2561–2595│ INICIALIZAÇÃO
+              │   aposConectarAPI() — fluxo pós-conexão bem-sucedida
+              │   IIFE iniciar() — ponto de entrada da aplicação
+  ──────────────────────────────────────────────────────────────────────────────
+-->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Finanças.DuC V00.042</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client" async defer onload="inicializarGoogleAuth()"></script>
+<style>
+  :root{
+    --bg: #14161a;
+    --surface: #1c1f24;
+    --surface-2: #23272d;
+    --line: #2d3138;
+    --text: #e9e6df;
+    --text-dim: #8f95a0;
+    --amber: #4a90e2;
+    --green: #5fae84;
+    --red: #d9685c;
+  }
+  *{ box-sizing: border-box; }
+  body{
+    margin:0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap{ max-width: 880px; margin: 0 auto; padding: 28px 20px 80px; }
+  header{ margin-bottom: 22px; }
+  .header-topo{ display:flex; align-items:center; justify-content:space-between; gap: 12px; }
+  h1{
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 4.6rem;
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+  h1 .tick{ color: var(--amber); }
+  .h1-financas{ display:flex; align-items:baseline; gap: 0px; }
+  .h1-nome{ color: var(--text); }
+  .h1-versao{ font-family: 'JetBrains Mono', monospace; font-size: 0.95rem; font-weight: 500; color: #c4c8cf; letter-spacing: 0.04em; align-self: flex-end; padding-bottom: 6px; margin-left: -10px; }
+  .subtitulo{ color: var(--text-dim); font-size: 0.85rem; margin-top: -2px; margin-left: 4px; }
+
+  .btn-config{
+    flex-shrink: 0;
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--text-dim);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+  }
+  .btn-config:hover{ color: var(--amber); border-color: var(--amber); }
+  .btn-config svg{ width: 19px; height: 19px; }
+
+  /* ── Header (estilo Imecap) ── */
+  header.hdr{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap: 12px;
+    position: relative;
+  }
+  header.hdr .logo{ display:flex; align-items:center; }
+  header.hdr .logo img{ height: 48px; width:auto; display:block; }
+
+  .hdr-actions{ display:flex; align-items:center; gap:10px; }
+
+  .icon-btn{
+    width: 38px; height: 38px; border-radius: 50%;
+    border: 1px solid var(--line); background: var(--surface);
+    color: var(--text-dim);
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; padding:0; flex-shrink:0;
+    transition: background .15s, border-color .15s, color .15s, transform .2s;
+  }
+  .icon-btn:hover{ border-color: var(--amber); color: var(--amber); }
+  .icon-btn:active{ opacity:.75; }
+
+  .btn-plus{
+    background: var(--amber); border-color: var(--amber); color:#14161a;
+    font-size: 20px; font-weight:700; line-height:1;
+  }
+  .btn-plus:hover{ filter: brightness(1.08); color:#14161a; }
+  .btn-plus.open{ transform: rotate(45deg); }
+
+  .btn-gear svg{ width:18px; height:18px; }
+
+  .btn-logout{ border-color: rgba(217,104,92,0.35); }
+  .btn-logout:hover{ border-color: var(--red); color: var(--red); }
+  .btn-logout svg{ width:15px; height:15px; }
+
+  /* Dropdown do botão + */
+  .dropdown{
+    display:none; position:absolute; top: 50px; right: 0;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 12px; overflow:hidden; min-width: 220px;
+    box-shadow: 0 10px 28px rgba(0,0,0,.45); z-index: 100;
+    animation: hdrFadeIn .15s ease;
+  }
+  .dropdown.show{ display:block; }
+  @keyframes hdrFadeIn{
+    from{ opacity:0; transform: translateY(-6px); }
+    to{ opacity:1; transform: translateY(0); }
+  }
+  .dd-item{
+    display:flex; align-items:center; gap:12px;
+    padding:14px 16px; cursor:pointer;
+    border-bottom: 1px solid var(--line);
+    transition: background .1s;
+  }
+  .dd-item:last-child{ border-bottom:none; }
+  .dd-item:hover{ background: var(--surface-2); }
+  .dd-icon{
+    width:32px; height:32px; border-radius:8px; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center; font-size:15px;
+  }
+  .dd-icon.p{ background: rgba(74,144,226,.16); color: var(--amber); }
+  .dd-icon.s{ background: rgba(95,174,132,.16); color: var(--green); }
+  .dd-titulo{ font-size:0.86rem; font-weight:600; color: var(--text); }
+  .dd-desc{ font-size:0.72rem; color: var(--text-dim); margin-top:2px; }
+
+  @media (max-width: 600px){
+    header.hdr .logo img{ height: 38px; }
+    .icon-btn{ width:34px; height:34px; }
+  }
+
+  .modal-overlay{
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    z-index: 1000;
+  }
+  .modal-overlay.aberto{ display: flex; }
+  .modal{
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 20px;
+    width: 100%;
+    max-width: 460px;
+    max-height: 85vh;
+    overflow-y: auto;
+  }
+  .modal-cabecalho{ display:flex; align-items:center; justify-content:space-between; margin-bottom: 16px; }
+  .modal-cabecalho h2{ font-family: 'Fraunces', serif; font-size: 1.1rem; margin: 0; color: var(--amber); }
+  .modal-fechar{ background: none; border: none; color: var(--text-dim); font-size: 1.05rem; cursor: pointer; padding: 4px; }
+  .modal label{ font-size: 0.72rem; color: var(--text-dim); display: block; margin-bottom: 6px; }
+  .modal input{
+    width: 100%;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    color: var(--text);
+    padding: 10px;
+    border-radius: 7px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    margin-bottom: 16px;
+  }
+  .modal-dica{ font-size: 0.76rem; color: var(--text-dim); margin: -10px 0 16px; line-height: 1.5; }
+  .modal-dica code{ color: var(--amber); }
+  .lista-passos{ margin: 0 0 16px; padding-left: 20px; font-size: 0.82rem; line-height: 1.7; color: var(--text); }
+  .lista-passos li{ margin-bottom: 4px; }
+  .lista-passos code{ color: var(--amber); font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; }
+
+  .modal-tabs{ display:flex; background: var(--surface-2); border:1px solid var(--line); border-radius:10px; padding:4px; margin-bottom:18px; gap:4px; }
+  .modal-tab-btn{ flex:1; text-align:center; padding:7px 0; border-radius:7px; background:transparent; border:none; color:var(--text-dim); font-size:0.76rem; cursor:pointer; font-family:inherit; }
+  .modal-tab-btn.ativo{ background: var(--surface); color: var(--amber); }
+  .modal-conteudo{ display:none; }
+  .modal-conteudo.ativo{ display:block; }
+
+  .cat-secao{ margin-bottom: 20px; }
+  .cat-secao-titulo{ display:flex; align-items:center; justify-content:space-between; font-size:0.84rem; margin-bottom:10px; }
+  .cat-secao-titulo .bolinha{ margin-right:6px; }
+  .cat-secao-titulo .bolinha.gastos{ color: var(--red); }
+  .cat-secao-titulo .bolinha.ganhos{ color: var(--green); }
+  .cat-add-btn{ background:transparent; border:1px solid var(--line); color: var(--amber); font-size:0.72rem; padding:4px 10px; border-radius:7px; cursor:pointer; font-family:inherit; }
+  .cat-lista{ display:flex; flex-wrap:wrap; gap:8px; }
+  .cat-chip{ display:flex; align-items:center; gap:6px; background: var(--surface-2); border:1px solid var(--line); border-radius:8px; padding:6px 6px 6px 10px; font-size:0.82rem; }
+  .cat-chip button{ background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:0.8rem;padding:2px 4px; }
+  .cat-chip button:hover{ color: var(--red); }
+  .cat-vazio{ color: var(--text-dim); font-size: 0.8rem; }
+
+  .dia-ref-grade{ display:grid; grid-template-columns: repeat(3,1fr); gap:8px; margin-bottom: 14px; }
+  .dia-ref-item{ background: var(--surface-2); border:1px solid var(--line); border-radius:8px; padding:10px 6px; text-align:center; cursor:pointer; font-size:0.84rem; }
+  .dia-ref-item .desc{ font-size:0.66rem; color:var(--text-dim); display:block; margin-top:2px; }
+  .dia-ref-item.selecionado{ border-color:var(--amber); color:var(--amber); }
+  .dia-ref-item.selecionado .desc{ color: var(--amber); opacity: 0.8; }
+  .dia-ref-outro{ display:flex; align-items:center; gap:10px; margin-bottom:16px; }
+  .dia-ref-outro label{ margin:0; flex-shrink:0; }
+  .dia-ref-outro input{ width:70px; margin-bottom:0; }
+
+  .cards{ display:grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 18px; }
+  .card{ background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px 16px 14px; }
+  .card .rotulo{ font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); margin-bottom: 6px; }
+  .card .num{
+    font-family: 'JetBrains Mono', monospace;
+    font-size: clamp(0.62rem, 3.2vw, 1.3rem);
+    font-weight: 700;
+    white-space: nowrap;
+    letter-spacing: -0.02em;
+  }
+  .card.receitas .num{ color: var(--green); }
+  .card.gastos .num{ color: var(--red); }
+  .card.saldo .num.pos{ color: var(--amber); }
+  .card.saldo .num.neg{ color: var(--red); }
+  @media (max-width: 600px){
+    .cards{ gap: 8px; }
+    .card{ padding: 12px 10px 10px; }
+    .card .rotulo{ font-size: 0.62rem; }
+  }
+
+  .tabs{
+    display:flex;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 4px;
+    margin-bottom: 16px;
+    gap: 4px;
+  }
+  .tab-btn{
+    flex:1;
+    text-align:center;
+    padding: 9px 0;
+    border-radius: 7px;
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    font-size: 0.88rem;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .tab-btn.ativo{ background: var(--surface); color: var(--amber); }
+
+  .filtro-datas{ display:flex; gap: 10px; margin-bottom: 18px; }
+  .filtro-datas div{ flex:1; }
+  .filtro-datas label{ font-size: 0.72rem; color: var(--text-dim); display:block; margin-bottom: 4px; }
+  .filtro-datas input{
+    width:100%;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    color: var(--text);
+    padding: 8px 10px;
+    border-radius: 7px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+  }
+
+  .aba{ display:none; }
+  .aba.ativa{ display:block; }
+
+  /* ---------- Overlay de carregamento ---------- */
+  .loading-overlay{
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(20,22,26,0.78);
+    backdrop-filter: blur(2px);
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+  }
+  .loading-overlay.aberto{ display: flex; }
+  .loading-caixa{
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 28px 32px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    min-width: 220px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+  }
+  .loading-spinner{
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: 3px solid var(--line);
+    border-top-color: var(--amber);
+    animation: girar 0.8s linear infinite;
+  }
+  @keyframes girar{ to{ transform: rotate(360deg); } }
+  .loading-texto{
+    font-size: 0.88rem;
+    color: var(--text);
+    text-align: center;
+  }
+  .loading-cancelar{
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--text-dim);
+    font-size: 0.78rem;
+    padding: 6px 16px;
+    border-radius: 7px;
+    cursor: pointer;
+    font-family: inherit;
+    margin-top: 2px;
+  }
+  .loading-cancelar:hover{ color: var(--red); border-color: var(--red); }
+
+  .botoes-topo{ display:flex; gap: 10px; margin-bottom: 16px; }
+  button{
+    background: var(--amber);
+    color: #1a1306;
+    border: none;
+    font-weight: 600;
+    padding: 10px 16px;
+    border-radius: 7px;
+    cursor: pointer;
+    font-size: 0.88rem;
+    font-family: inherit;
+  }
+  button:hover{ filter: brightness(1.08); }
+  button.outline{ background: transparent; color: var(--amber); border: 1px solid var(--amber); }
+  button.secundario{ background: transparent; color: var(--text-dim); border: 1px solid var(--line); }
+  button.full{ width:100%; }
+
+  form{
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 16px;
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+  form.escondido{ display:none; }
+  form label{ font-size: 0.72rem; color: var(--text-dim); display:block; margin-bottom: 4px; }
+  form input, form select{
+    width: 100%;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    color: var(--text);
+    padding: 8px 10px;
+    border-radius: 7px;
+    font-family: inherit;
+    font-size: 0.88rem;
+  }
+  form input[type="number"]{ font-family: 'JetBrains Mono', monospace; }
+  .col-2{ grid-column: span 2; }
+  .col-3{ grid-column: span 3; }
+  .col-4{ grid-column: span 4; }
+  .col-6{ grid-column: span 6; }
+  @media (max-width: 600px){
+    form{ grid-template-columns: repeat(2, 1fr); }
+    .col-2, .col-3, .col-4, .col-6{ grid-column: 1 / -1; }
+    .botoes-topo{ flex-direction: column; }
+  }
+  .check-linha{ display:flex; align-items:center; gap: 8px; font-size: 0.85rem; color: var(--text-dim); }
+  .check-linha input{ width:auto; }
+  .acoes-form{ display:flex; gap:10px; }
+
+  .tabela-wrap{ overflow-x: auto; border-radius: 10px; }
+  table{ width:100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+  th, td{ text-align: left; padding: 10px 12px; font-size: 0.85rem; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th{ color: var(--text-dim); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 500; }
+  tr:last-child td{ border-bottom: none; }
+  td.tick-cel{ width: 4px; padding: 0; }
+  .tick-bar{ width: 4px; height: 100%; display:block; min-height: 32px; }
+  .tick-bar.Receita{ background: var(--green); }
+  .tick-bar.Despesa, .tick-bar.Pagar{ background: var(--red); }
+  .tick-bar.Cobrar{ background: var(--green); }
+  td.valor{ font-family: 'JetBrains Mono', monospace; text-align:right; }
+  td.valor.Receita, td.valor.Cobrar{ color: var(--green); }
+  td.valor.Despesa, td.valor.Pagar{ color: var(--red); }
+  .valor.Cobrar{ color: var(--green); }
+  .valor.Pagar{ color: var(--red); }
+  .tag{ font-size: 0.68rem; padding: 2px 7px; border-radius: 99px; border: 1px solid var(--line); color: var(--text-dim); white-space: nowrap; }
+  .tag.Concluído{ color: var(--green); border-color: var(--green); }
+  .tag-pilha{ display:flex; flex-direction:column; gap:3px; align-items:flex-start; }
+  .apagar-btn{ background: none; border: none; color: var(--text-dim); cursor: pointer; font-size: 0.95rem; padding: 2px 6px; }
+  .apagar-btn:hover{ color: var(--red); }
+  .vazio{ text-align:center; color: var(--text-dim); padding: 28px 20px; font-size: 0.85rem; line-height:1.6; white-space: normal; }
+
+  .lembrete-item{
+    display:flex; align-items:center; justify-content:space-between;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 8px;
+    padding: 12px 14px; margin-bottom: 8px; font-size: 0.86rem;
+  }
+  .lembrete-info{ display:flex; align-items:center; gap:10px; }
+  .lembrete-meta{ display:flex; flex-direction:column; gap:2px; }
+  .lembrete-meta .desc{ font-weight: 500; }
+  .lembrete-meta .venc{ font-size: 0.74rem; color: var(--text-dim); font-family:'JetBrains Mono', monospace; }
+  .lembrete-acoes{ display:flex; align-items:center; gap:10px; }
+  .status-btn{
+    background: transparent; border: 1px solid var(--line); color: var(--text-dim);
+    font-size: 0.72rem; padding: 4px 10px; border-radius: 99px; cursor:pointer; font-family: inherit;
+  }
+  .status-btn.Concluído{ color: var(--green); border-color: var(--green); }
+
+  .oculto{ display:none !important; }
+  .status-auto{ font-size:0.82rem; padding:11px 13px; border-radius:8px; margin:14px 0; line-height:1.55; }
+  .status-auto.status-info{ background: var(--surface-2); color: var(--text-dim); border:1px solid var(--line); }
+  .status-auto.status-sucesso{ background: rgba(95,174,132,0.12); color: var(--green); border:1px solid var(--green); }
+  .status-auto.status-erro{ background: rgba(217,104,92,0.12); color: var(--red); border:1px solid var(--red); }
+  .status-auto.status-aviso{ background: rgba(74,144,226,0.12); color: var(--amber); border:1px solid var(--amber); }
+  .divisor-ou{ display:flex; align-items:center; gap:10px; margin:18px 0; color: var(--text-dim); font-size:0.74rem; text-transform:uppercase; letter-spacing:0.05em; }
+  .divisor-ou::before, .divisor-ou::after{ content:''; flex:1; height:1px; background: var(--line); }
+
+  .entrada-caixa{ max-width: 360px; margin: 0 auto; text-align: center; }
+  .entrada-texto{ color: var(--text-dim); font-size: 0.9rem; margin-bottom: 20px; line-height: 1.5; }
+  .lista-mesclagem{ text-align: left; margin-bottom: 16px; max-height: 280px; overflow-y: auto; }
+  .item-mesclagem{ display:flex; align-items:center; gap:10px; padding:11px 13px; border:1px solid var(--line); border-radius:8px; margin-bottom:8px; background: var(--surface-2); }
+  .item-mesclagem input{ width:auto; margin:0; flex-shrink:0; }
+  .item-mesclagem-info{ display:flex; flex-direction:column; gap:2px; }
+  .item-mesclagem-nome{ font-size:0.85rem; color: var(--text); }
+  .item-mesclagem-data{ font-size:0.72rem; color: var(--text-dim); }
+
+  .resumo-bloco{ margin-bottom: 22px; }
+  .resumo-titulo{ font-size: 0.78rem; color: var(--text-dim); text-transform:uppercase; letter-spacing:0.05em; margin-bottom: 10px; }
+  .barra-linha{ display:flex; align-items:center; gap: 10px; margin-bottom: 9px; font-size: 0.85rem; }
+  .barra-rotulo{ width: 100px; flex-shrink:0; color: var(--text-dim); overflow:hidden; text-overflow:ellipsis; }
+  .barra-fundo{ flex:1; background: var(--surface-2); border-radius: 6px; height: 18px; overflow:hidden; }
+  .barra-preenchida{ height:100%; background: var(--amber); border-radius: 6px; }
+  .barra-valor{ width: 100px; text-align:right; font-family:'JetBrains Mono', monospace; flex-shrink:0; }
+
+  /* ===== Layout D — tela de entrada em tela cheia imersiva ===== */
+  #tela-entrada{
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 0 24px 140px;
+    position: relative;
+    z-index: 10000; /* acima do #splash (9999): aparece por cima dele,
+                        sem precisar que a splash saia da tela */
+  }
+  #tela-entrada .bg-orb{
+    position: fixed;
+    width: 500px;
+    height: 500px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(74,144,226,.06) 0%, transparent 70%);
+    top: -100px;
+    right: -100px;
+    pointer-events: none;
+  }
+  #tela-entrada .logo-grande{
+    text-align: center;
+    line-height: 1;
+    /* Reserva o mesmo espaço que a logo ocupava quando estava aqui,
+       usando a proporção real da imagem (760×149px ≈ 5.1:1), mais uma
+       margem extra ajustada visualmente pelo usuário, para que o
+       restante da tela (subtítulo, tag, card) fique na posição exata
+       que ele aprovou. */
+    width: min(340px, 90%);
+    aspect-ratio: 5.1 / 1;
+    margin: 0 auto 82px;
+  }
+  #tela-entrada .logo-grande img{
+    max-width: 340px;
+    width: 90%;
+    display: block;
+    margin: 0 auto;
+  }
+  #tela-entrada .logo-subtitulo,
+  #tela-entrada .logo-tag,
+  #tela-entrada .action-card,
+  #tela-entrada .action-card #login-default-content{
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity .45s ease, transform .45s ease;
+  }
+  /* O conteúdo do card (texto + botão) some por padrão mesmo antes do
+     card "revelado" aparecer, para poder surgir DEPOIS do quadrado
+     vazio do card, não junto com ele. */
+  #tela-entrada .action-card #login-default-content{ opacity: 0; }
+
+  #tela-entrada.revelada .logo-subtitulo{
+    opacity: 1; transform: none;
+  }
+  #tela-entrada.revelada .logo-tag{
+    opacity: 1; transform: none;
+    transition-delay: .08s;
+  }
+  #tela-entrada.revelada .action-card{
+    opacity: 1; transform: none;
+    transition-delay: .16s;
+  }
+  #tela-entrada.revelada .action-card #login-default-content{
+    opacity: 1; transform: none;
+    transition-delay: .28s;
+  }
+  #tela-entrada .logo-subtitulo{
+    color: var(--text-dim);
+    font-size: 0.92rem;
+    text-align: center;
+    margin-top: 10px;
+    margin-bottom: 4px;
+    letter-spacing: 0.01em;
+  }
+  #tela-entrada .logo-tag{
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 10px;
+    margin-bottom: 48px;
+  }
+  #tela-entrada .logo-versao{
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    border: 1px solid var(--line);
+    border-radius: 99px;
+    padding: 3px 10px;
+  }
+  #tela-entrada .action-card{
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 24px;
+    width: 100%;
+    max-width: 340px;
+    position: relative;
+    z-index: 1;
+  }
+  #tela-entrada .action-desc{
+    color: var(--text-dim);
+    font-size: 0.82rem;
+    line-height: 1.6;
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  #tela-entrada .action-divisor{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+    color: var(--line);
+  }
+  #tela-entrada .action-divisor::before,
+  #tela-entrada .action-divisor::after{
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--line);
+  }
+  #tela-entrada .action-divisor span{
+    font-size: .65rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    white-space: nowrap;
+  }
+  #tela-entrada .btn-primary{
+    width: 100%;
+    background: var(--amber);
+    color: #ffffff;
+    border: none;
+    font-weight: 700;
+    font-size: 0.9rem;
+    font-family: 'Inter', sans-serif;
+    padding: 14px;
+    border-radius: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    transition: filter .15s;
+    min-height: 48px;
+  }
+  #tela-entrada .btn-primary:hover{ filter: brightness(1.08); }
+  #tela-entrada .btn-primary:disabled{ opacity: .4; cursor: default; filter: none; }
+  #tela-entrada .status-auto{
+    margin-top: 14px;
+    margin-bottom: 0;
+    text-align: center;
+  }
+  @keyframes gira{ to{ transform: rotate(360deg); } }
+  #tela-entrada .spin{
+    width: 17px;
+    height: 17px;
+    border: 2.5px solid rgba(26,19,6,.25);
+    border-top-color: #1a1306;
+    border-radius: 50%;
+    animation: gira .7s linear infinite;
+    flex-shrink: 0;
+  }
+
+  /* ── SPLASH DE ABERTURA ─────────────────────────────────────────
+     Fica visível o tempo todo (não esmaece nem é removida). A tela de
+     login aparece por cima dela, com fade-in próprio, dando a impressão
+     de que a logo nunca saiu do lugar.
+
+     DOIS MODOS de entrada da logo:
+       • Entrada direta      → classe .com-fade : logo entra esmaecendo
+       • Vindo da autorização → classe .sem-fade : logo já começa visível */
+  #splash{
+    position: fixed; inset: 0; z-index: 9999;
+    background: var(--bg);
+    display: flex; flex-direction: column;
+    align-items: center;
+    /* justify-content e padding-top são ajustados via JS (posicionarLogoSplash,
+       perto do fim do arquivo), medindo a posição real do subtítulo da
+       tela de login, para a logo ficar sempre um pouco acima dele —
+       em qualquer resolução, sem depender de um valor fixo chutado. */
+    justify-content: flex-start;
+    padding-top: 20vh;
+    gap: 26px;
+  }
+  #splash img, #tela-entrada .logo-grande img{
+    max-width: 340px;
+    width: 90%;
+    height: auto;
+    display: block;
+    margin: 0 auto;
+  }
+
+  /* Modo 1 — entrada direta: logo entra esmaecendo, vindo de um pouco
+     mais abaixo (5mm) e subindo enquanto aparece. O atraso inicial (.6s)
+     é o tempo em preto total antes da logo começar a aparecer. */
+  #splash.com-fade img{
+    opacity: 0;
+    transform: scale(.94) translateY(5mm);
+    animation: splashLogo .75s cubic-bezier(.2,.7,.3,1) .6s forwards;
+  }
+
+  /* Modo 2 — vindo da tela de autorização: já começa visível,
+     para dar a impressão de que a logo nunca saiu da tela. */
+  #splash.sem-fade img{ opacity: 1; transform: none; }
+
+  @keyframes splashLogo{
+    to{ opacity: 1; transform: scale(1) translateY(0); }
+  }
+  /* Respeita quem pediu menos animação no sistema */
+  @media (prefers-reduced-motion: reduce){
+    #splash.com-fade img{
+      animation-duration: .01s; opacity: 1;
+    }
+  }
+
+  /* Estado de carregamento do login */
+  #login-loading{ text-align: center; padding: 8px 0; }
+  .login-spinner{
+    width: 38px; height: 38px;
+    border: 3px solid var(--line);
+    border-top-color: var(--amber);
+    border-radius: 50%;
+    animation: girar 0.9s linear infinite;
+    margin: 4px auto 22px;
+  }
+  .login-passos{ display: flex; flex-direction: column; gap: 10px; }
+  .login-passo{
+    font-size: 0.84rem;
+    color: var(--text-dim);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: color 0.4s, opacity 0.4s;
+    opacity: 0.35;
+  }
+  .login-passo .passo-icone{ font-size: 0.75rem; }
+  .login-passo.ativo{ color: var(--text); opacity: 1; }
+  .login-passo.concluido{ color: var(--amber); opacity: 1; }
+  .login-passo.concluido .passo-icone::before{ content: '✓'; }
+  .login-passo:not(.concluido) .passo-icone::before{ content: '○'; }
+  .login-passo.ativo:not(.concluido) .passo-icone::before{ content: '●'; color: var(--amber); }
+
+  
+  /* Telas secundárias de entrada: centralização vertical igual à tela-entrada */
+  .tela-sec{
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 0 24px 140px;
+  }
+
+  </style>
+</head>
+<body>
+
+<!-- Splash de abertura: some assim que o app termina de carregar -->
+<div id="splash">
+  <img src="logo.png" alt="Finanças.DuC">
+</div>
+<script>
+  /* Decide o modo da splash ANTES da primeira pintura, para não haver
+     nenhum instante de fade indevido:
+       • Se o usuário está voltando da tela "Tudo pronto!" do Apps Script,
+         a logo já estava na tela — então entra SEM esmaecer (.sem-fade).
+       • Caso contrário é entrada direta — entra esmaecendo (.com-fade).
+     A saída é sempre esmaecendo, nos dois casos. */
+  (function definirModoSplash(){
+    var el = document.getElementById('splash');
+    if (!el) return;
+    var voltandoDaAutorizacao = false;
+    try {
+      voltandoDaAutorizacao = localStorage.getItem('duc_financas_auth_pendente') === '1';
+    } catch (e) {}
+    el.classList.add(voltandoDaAutorizacao ? 'sem-fade' : 'com-fade');
+  })();
+</script>
+
+<div class="loading-overlay" id="loading-overlay">
+  <div class="loading-caixa">
+    <div class="loading-spinner"></div>
+    <div class="loading-texto" id="loading-texto">Aguarde, processando...</div>
+    <button class="loading-cancelar" id="loading-cancelar">Cancelar</button>
+  </div>
+</div>
+<div class="wrap">
+
+
+  <!-- MODAL DE CONFIGURAÇÕES -->
+  <div class="modal-overlay" id="modal-config">
+    <div class="modal">
+      <div class="modal-cabecalho">
+        <h2>Configurações</h2>
+        <button class="modal-fechar" id="modal-fechar">✕</button>
+      </div>
+
+      <div class="modal-tabs">
+        <button class="modal-tab-btn ativo" data-mtab="bancodedados">Banco de Dados</button>
+        <button class="modal-tab-btn" data-mtab="categorias">Categorias</button>
+        <button class="modal-tab-btn" data-mtab="referencia">Dia de Referência</button>
+        <button class="modal-tab-btn" data-mtab="notificacoes">Notificações</button>
+      </div>
+
+      <div class="modal-conteudo ativo" data-mconteudo="bancodedados">
+        <div class="modal-dica" style="margin-top:0;">O banco de dados é a sua própria planilha do Google Sheets. Ela fica só na sua conta — ninguém mais tem acesso.</div>
+
+        <button class="full" id="btn-config-auto">🪄 Configurar automaticamente com Google</button>
+        <div class="modal-dica" id="dica-config-auto" style="margin:8px 0 0;">Você vai logar com sua conta Google e autorizar a criação de uma planilha + um script. Leva cerca de 30 segundos.</div>
+        <div id="status-config-auto" class="status-auto oculto"></div>
+
+        <div class="divisor-ou">ou</div>
+        <button type="button" class="secundario full" id="btn-toggle-manual">Configurar manualmente</button>
+
+        <div id="bloco-manual" class="oculto" style="margin-top:16px;">
+          <div class="modal-dica" style="margin-top:0;">Copie o código e siga os passos:</div>
+          <button class="full" id="btn-copiar-codigo" style="margin-bottom:16px;">Copiar código (Code.gs)</button>
+          <ol class="lista-passos">
+            <li>Crie (ou abra) uma planilha no Google Sheets</li>
+            <li>Menu <b>Extensões &gt; Apps Script</b></li>
+            <li>Apague o conteúdo padrão do editor, cole o código copiado e salve (Ctrl+S)</li>
+            <li>Volte pra planilha e recarregue a página — vai aparecer o menu <b>⚙️ DuC Finanças</b></li>
+            <li>Clique em <b>⚙️ DuC Finanças &gt; Configurar tudo (1ª vez)</b> e autorize o acesso quando pedido</li>
+            <li><b>Implantar &gt; Nova implantação</b> → tipo "App da Web" → Executar como: Eu / Acesso: Qualquer pessoa → Implantar</li>
+            <li>Copie a URL gerada (termina em <code>/exec</code>) e cole abaixo</li>
+          </ol>
+          <div class="modal-dica">Na primeira execução o Google vai pedir autorização da sua própria conta — aceite.</div>
+          <label>URL do Apps Script</label>
+          <input type="text" id="config-api-url" placeholder="https://script.google.com/macros/s/.../exec">
+          <button id="modal-salvar-url">Salvar URL</button>
+        </div>
+      </div>
+
+      <div class="modal-conteudo" data-mconteudo="categorias">
+        <div class="cat-secao">
+          <div class="cat-secao-titulo"><span><span class="bolinha gastos">●</span>Categorias de Gastos</span><button class="cat-add-btn" data-tipo="Despesa">+ Adicionar</button></div>
+          <div class="cat-lista" id="cat-lista-despesa"></div>
+        </div>
+        <div class="cat-secao">
+          <div class="cat-secao-titulo"><span><span class="bolinha ganhos">●</span>Categorias de Ganhos</span><button class="cat-add-btn" data-tipo="Receita">+ Adicionar</button></div>
+          <div class="cat-lista" id="cat-lista-receita"></div>
+        </div>
+        <form id="form-nova-categoria" class="escondido">
+          <input type="hidden" id="nc-tipo">
+          <div class="col-2"><label>Emoji</label><input type="text" id="nc-emoji" maxlength="4" placeholder="🏷️"></div>
+          <div class="col-4"><label>Nome</label><input type="text" id="nc-nome" placeholder="Ex: Lazer"></div>
+          <div class="col-6 acoes-form">
+            <button type="submit">Adicionar</button>
+            <button type="button" class="secundario" id="nc-cancelar">Cancelar</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="modal-conteudo" data-mconteudo="referencia">
+        <div class="modal-dica" style="margin-top:0;">Quando você recebe seu dinheiro? Isso define o período padrão exibido nos filtros De/Até.</div>
+        <div class="dia-ref-grade" id="dia-ref-grade"></div>
+        <div class="dia-ref-outro">
+          <label>Outro dia:</label>
+          <input type="number" id="dia-ref-outro" min="1" max="31">
+        </div>
+        <button id="modal-salvar-referencia">Salvar</button>
+      </div>
+
+      <div class="modal-conteudo" data-mconteudo="notificacoes">
+        <div class="modal-dica" style="margin-top:0;">Importa transações automaticamente quando o app do seu banco mostrar uma notificação (Pix, compra no cartão, boleto pago etc), usando o MacroDroid como ponte.</div>
+        <a href="https://play.google.com/store/apps/details?id=com.arlosoft.macrodroid" target="_blank" rel="noopener">
+          <button class="full" type="button">📲 Baixar MacroDroid (Play Store)</button>
+        </a>
+        <button class="full secundario" id="btn-copiar-url-notificacao" style="margin-top:10px;">Copiar URL de importação</button>
+        <ol class="lista-passos" style="margin-top:16px;">
+          <li>Instale e abra o MacroDroid, toque em <b>Adicionar Macro</b></li>
+          <li>Gatilho: <b>Notificação &gt; Recebida</b> → selecione o app do seu banco</li>
+          <li>Conceda a permissão de <b>Acesso a Notificações</b> quando pedido (é única vez)</li>
+          <li>Ação: <b>Conectividade &gt; Requisição da Web (HTTP GET)</b></li>
+          <li>Na URL, cole o que foi copiado acima e, no final, adicione a variável de texto da notificação do MacroDroid (geralmente <code>[nt_text]</code>)</li>
+          <li>Salve a macro e teste recebendo (ou simulando) uma notificação do banco</li>
+        </ol>
+        <div class="modal-dica">A transação cai como "Variável", origem "Notificação", com uma tentativa automática de identificar valor e se é receita ou despesa pelo texto. Sempre revise na aba Transações.</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="tela-entrada">
+    <div class="bg-orb"></div>
+    <div class="logo-grande"></div>
+    <div class="logo-subtitulo">Controle de pagamentos e cobranças</div>
+    <div class="logo-tag">
+      <span class="logo-versao" id="badge-versao"></span>
+    </div>
+
+    <div class="action-card">
+      <div id="login-default-content">
+        <p class="entrada-texto action-desc">
+          Use sua conta Google para acessar suas finanças.<br>
+          Se ainda não tiver um banco de dados, criamos um pra você na hora.
+        </p>
+        <div class="action-divisor"><span>entrar</span></div>
+        <button class="full btn-primary" id="btn-entrar-google">Iniciar com conta Google</button>
+      </div>
+
+      <div id="login-loading" class="oculto">
+        <div class="login-spinner"></div>
+        <div class="login-passos">
+          <div class="login-passo" id="lpasso-1"><span class="passo-icone"></span> Abrindo conta Google...</div>
+          <div class="login-passo" id="lpasso-2"><span class="passo-icone"></span> Verificando credenciais...</div>
+          <div class="login-passo" id="lpasso-3"><span class="passo-icone"></span> Carregando seus dados...</div>
+        </div>
+      </div>
+
+      <div id="status-entrada" class="status-auto oculto"></div>
+    </div>
+  </div>
+
+  <script>
+    /* Posiciona a logo da splash um pouco ACIMA do subtítulo "Controle
+       de pagamentos e cobranças" da tela de login — em QUALQUER
+       resolução, medindo a posição real do subtítulo (que já está no
+       DOM, mesmo antes de aparecer) em vez de usar um valor fixo
+       chutado, que erraria em telas de tamanhos diferentes.
+
+       IMPORTANTE: a fonte Fraunces carrega de forma assíncrona
+       (Google Fonts, display=swap). Medir antes dela carregar dá a
+       métrica da fonte de fallback, que tem altura de linha diferente.
+       Por isso aguarda-se document.fonts.ready antes de medir. */
+    const MARGEM_LOGO_ACIMA_SUBTITULO = 90; // px de espaço entre a base da logo e o subtítulo
+    function posicionarLogoSplash(){
+      var splash = document.getElementById('splash');
+      var subtitulo = document.querySelector('#tela-entrada .logo-subtitulo');
+      if (!splash || !subtitulo) return;
+      var topoSubtitulo = subtitulo.getBoundingClientRect().top;
+      var padding = topoSubtitulo - MARGEM_LOGO_ACIMA_SUBTITULO;
+      splash.style.paddingTop = Math.max(0, padding) + 'px';
+    }
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(posicionarLogoSplash);
+      posicionarLogoSplash(); // aplica já com a fonte disponível (evita 1º frame no lugar errado se possível)
+    } else {
+      posicionarLogoSplash(); // navegador sem Font Loading API: melhor esforço
+    }
+  </script>
+
+  <div id="tela-conta-nao-encontrada" class="oculto tela-sec">
+    <div class="entrada-caixa">
+      <p class="entrada-texto">Conta não encontrada.</p>
+      <button class="full" id="btn-nao-encontrada-criar">Criar conta com a Google</button>
+      <button class="full secundario" id="btn-nao-encontrada-voltar" style="margin-top:10px;">Voltar</button>
+    </div>
+  </div>
+
+  <div id="tela-mesclagem" class="oculto tela-sec">
+    <div class="entrada-caixa">
+      <p class="entrada-texto">Encontramos mais de uma planilha do banco de dados na sua conta Google. Escolha quais deseja unir em uma única planilha.</p>
+      <div id="lista-mesclagem" class="lista-mesclagem"></div>
+      <button class="full" id="btn-mesclagem-confirmar">Unir selecionadas</button>
+      <button class="full secundario" id="btn-mesclagem-cancelar" style="margin-top:10px;">Cancelar</button>
+      <div id="status-mesclagem" class="status-auto oculto"></div>
+    </div>
+  </div>
+
+  <div id="app-conectado" class="oculto">
+  <header class="hdr">
+      <div class="logo"></div>
+
+      <div class="hdr-actions">
+        <button class="icon-btn btn-plus" id="btn-plus-header" title="Adicionar" aria-label="Adicionar" onclick="toggleMenuHeader()">+</button>
+        <button class="icon-btn btn-gear" id="btn-config" title="Configurações" aria-label="Configurações">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+        </button>
+        <button class="icon-btn btn-logout" id="btn-logout-header" title="Sair" aria-label="Sair" onclick="fazerLogout()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#d9685c" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+            <polyline points="16 17 21 12 16 7"/>
+            <line x1="21" y1="12" x2="9" y2="12"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Dropdown do botão + -->
+      <div class="dropdown" id="dropdown-header">
+        <div class="dd-item" onclick="abrirNovaTransacaoPeloHeader()">
+          <div class="dd-icon p">✏️</div>
+          <div>
+            <div class="dd-titulo">Nova Transação</div>
+            <div class="dd-desc">Inserir manualmente</div>
+          </div>
+        </div>
+        <div class="dd-item" onclick="abrirImportarPeloHeader()">
+          <div class="dd-icon s">📂</div>
+          <div>
+            <div class="dd-titulo">Importar</div>
+            <div class="dd-desc">Carregar arquivo CSV</div>
+          </div>
+        </div>
+      </div>
+    </header>
+  <div class="cards">
+    <div class="card receitas">
+      <div class="rotulo">Receitas</div>
+      <div class="num" id="card-receitas">R$ 0,00</div>
+    </div>
+    <div class="card saldo">
+      <div class="rotulo">Saldo</div>
+      <div class="num" id="card-saldo">R$ 0,00</div>
+    </div>
+    <div class="card gastos">
+      <div class="rotulo">Gastos</div>
+      <div class="num" id="card-gastos">R$ 0,00</div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn ativo" data-aba="transacoes">Transações</button>
+    <button class="tab-btn" data-aba="resumo">Resumo</button>
+    <button class="tab-btn" data-aba="lembretes">Lembretes</button>
+  </div>
+
+  <div class="filtro-datas">
+    <div><label>De:</label><input type="date" id="data-inicio"></div>
+    <div><label>Até:</label><input type="date" id="data-fim"></div>
+  </div>
+
+  <!-- ABA: TRANSAÇÕES -->
+  <div class="aba ativa" id="aba-transacoes">
+    <div class="botoes-topo">
+      <button id="btn-nova-transacao">Nova Transação</button>
+      <button class="outline" id="btn-importar">Importar</button>
+      <input type="file" id="arquivo-importar" accept=".csv" style="display:none">
+    </div>
+
+    <form id="form-transacao" class="escondido">
+      <div class="col-2">
+        <label>Tipo</label>
+        <select id="t-tipo">
+          <option value="Despesa">Despesa</option>
+          <option value="Receita">Receita</option>
+        </select>
+      </div>
+      <div class="col-2">
+        <label>Periodicidade</label>
+        <select id="t-periodicidade">
+          <option value="Variável">Variável</option>
+          <option value="Fixa">Fixa</option>
+          <option value="Única">Única</option>
+        </select>
+      </div>
+      <div class="col-2">
+        <label>Categoria</label>
+        <select id="t-categoria-tema"><option value="">Sem categoria</option></select>
+      </div>
+      <div class="col-2">
+        <label>Data</label>
+        <input type="date" id="t-data" required>
+      </div>
+      <div class="col-4">
+        <label>Descrição</label>
+        <input type="text" id="t-descricao" placeholder="Ex: aluguel, mercado, salário" required>
+      </div>
+      <div class="col-2">
+        <label>Valor (R$)</label>
+        <input type="number" id="t-valor" step="0.01" min="0" placeholder="0,00" required>
+      </div>
+      <div class="col-6" id="t-recorrente-wrap" style="display:none;">
+        <label class="check-linha"><input type="checkbox" id="t-recorrente" checked> Repetir automaticamente todo mês (cadastra como fixo)</label>
+      </div>
+      <div class="col-6 acoes-form">
+        <button type="submit">Salvar</button>
+        <button type="button" class="secundario" id="t-cancelar">Cancelar</button>
+      </div>
+    </form>
+
+    <div class="tabela-wrap">
+      <table id="tabela-transacoes">
+        <thead><tr><th></th><th>Data</th><th>Descrição</th><th>Categoria</th><th>Origem</th><th style="text-align:right">Valor</th><th></th></tr></thead>
+        <tbody id="corpo-transacoes"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ABA: RESUMO -->
+  <div class="aba" id="aba-resumo">
+    <div id="conteudo-resumo"></div>
+  </div>
+
+  <!-- ABA: LEMBRETES -->
+  <div class="aba" id="aba-lembretes">
+    <div class="botoes-topo">
+      <button class="full" id="btn-novo-lembrete">Novo Lembrete</button>
+    </div>
+
+    <form id="form-lembrete" class="escondido">
+      <div class="col-3">
+        <label>Tipo</label>
+        <select id="le-tipo">
+          <option value="Pagar">A pagar</option>
+          <option value="Cobrar">A cobrar</option>
+        </select>
+      </div>
+      <div class="col-3">
+        <label>Vencimento</label>
+        <input type="date" id="le-vencimento" required>
+      </div>
+      <div class="col-3">
+        <label>Descrição</label>
+        <input type="text" id="le-descricao" placeholder="Ex: cartão, cliente X" required>
+      </div>
+      <div class="col-3">
+        <label>Valor (R$)</label>
+        <input type="number" id="le-valor" step="0.01" min="0" placeholder="0,00" required>
+      </div>
+      <div class="col-6">
+        <label class="check-linha"><input type="checkbox" id="le-recorrente"> Repetir todo mês</label>
+      </div>
+      <div class="col-6 acoes-form">
+        <button type="submit">Salvar</button>
+        <button type="button" class="secundario" id="le-cancelar">Cancelar</button>
+      </div>
+    </form>
+
+    <div id="lista-lembretes"></div>
+  </div>
+  </div>
+
+</div>
+
+<script>
+// ====== CONFIGURAÇÃO ======
+let API_URL = localStorage.getItem('duc_financas_api_url') || "";
+let diaReferenciaAtual = 1;
+let categoriasCache = { Despesa: [], Receita: [] };
+
+// Client ID do OAuth do Google. Crie o seu uma vez no Google Cloud Console
+// (Credenciais > Criar credenciais > ID do cliente OAuth > Aplicativo da Web)
+// e cole aqui. É público por natureza, fica visível no HTML — não é segredo.
+const GOOGLE_CLIENT_ID = "14329074132-qb4tc07suauqffs40qai2t5a791pad1e.apps.googleusercontent.com";
+// ── VERSÃO DO APP ──────────────────────────────────────────────
+// Fonte única da verdade: o <title>. O badge na tela é preenchido a partir
+// dele, então basta trocar a versão no <title> — nunca mais dessincroniza.
+const APP_VERSAO = (document.title.match(/V[\d.]+/) || ['V00.000'])[0];
+
+
+
+// Nome usado para a planilha (banco de dados) e o projeto Apps Script.
+// Trocar aqui muda em todos os lugares.
+const NOME_PLANILHA = 'Finanças.DuC-Banco_dados';
+
+const GOOGLE_SCOPES = [
+  'https://www.googleapis.com/auth/spreadsheets',
+  'https://www.googleapis.com/auth/script.projects',
+  'https://www.googleapis.com/auth/script.deployments',
+  'https://www.googleapis.com/auth/script.scriptapp',
+  'https://www.googleapis.com/auth/drive.metadata.readonly'
+].join(' ');
+
+const diasReferenciaPredefinidos = [
+  { dia: 1, desc: 'Início do mês' },
+  { dia: 5, desc: '5º dia útil' },
+  { dia: 10, desc: '2ª semana do mês' },
+  { dia: 15, desc: 'Metade do mês' },
+  { dia: 20, desc: '2ª quinzena' },
+  { dia: 25, desc: 'Fechamento' },
+];
+// ===========================
+
+const elInicio = document.getElementById('data-inicio');
+const elFim = document.getElementById('data-fim');
+const modalConfig = document.getElementById('modal-config');
+const inputConfigUrl = document.getElementById('config-api-url');
+
+function formatarISOLocal(d){
+  const ano = d.getFullYear();
+  const mes = String(d.getMonth()+1).padStart(2,'0');
+  const dia = String(d.getDate()).padStart(2,'0');
+  return `${ano}-${mes}-${dia}`;
+}
+function calcularPeriodoPadrao(){
+  const hoje = new Date();
+  const dia = diaReferenciaAtual || 1;
+  let inicio, fim;
+  if (hoje.getDate() >= dia){
+    inicio = new Date(hoje.getFullYear(), hoje.getMonth(), dia);
+    fim = new Date(hoje.getFullYear(), hoje.getMonth()+1, dia-1);
+  } else {
+    inicio = new Date(hoje.getFullYear(), hoje.getMonth()-1, dia);
+    fim = new Date(hoje.getFullYear(), hoje.getMonth(), dia-1);
+  }
+  elInicio.value = formatarISOLocal(inicio);
+  elFim.value = formatarISOLocal(fim);
+}
+function formatarMoeda(v){
+  return 'R$ ' + Number(v).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+function formatarDataBR(iso){
+  const p = String(iso).substring(0,10).split('-');
+  return p.length === 3 ? p[2]+'/'+p[1]+'/'+p[0] : iso;
+}
+
+// ---------- Overlay de carregamento / bloqueio durante processamento ----------
+const elLoadingOverlay = document.getElementById('loading-overlay');
+const elLoadingTexto = document.getElementById('loading-texto');
+const elLoadingCancelar = document.getElementById('loading-cancelar');
+let abortControllerAtual = null;
+let chamadaCancelada = false;
+
+function bloquearTeclas(e){
+  // Permite apenas Tab/Shift (navegação básica) e o próprio clique no botão cancelar.
+  if (e.target === elLoadingCancelar) return;
+  e.preventDefault();
+  e.stopPropagation();
+}
+
+function mostrarLoading(texto){
+  chamadaCancelada = false;
+  elLoadingTexto.textContent = texto || 'Aguarde, processando...';
+  elLoadingOverlay.classList.add('aberto');
+  document.addEventListener('keydown', bloquearTeclas, true);
+  document.addEventListener('keypress', bloquearTeclas, true);
+  document.addEventListener('keyup', bloquearTeclas, true);
+}
+
+function esconderLoading(){
+  elLoadingOverlay.classList.remove('aberto');
+  document.removeEventListener('keydown', bloquearTeclas, true);
+  document.removeEventListener('keypress', bloquearTeclas, true);
+  document.removeEventListener('keyup', bloquearTeclas, true);
+  abortControllerAtual = null;
+}
+
+elLoadingCancelar.addEventListener('click', () => {
+  chamadaCancelada = true;
+  if (abortControllerAtual) abortControllerAtual.abort();
+  esconderLoading();
+});
+
+window.__requisicoesEmAndamento = 0;
+async function chamarAPI(params, metodo, textoLoading){
+  metodo = metodo || 'GET';
+  window.__requisicoesEmAndamento++;
+  abortControllerAtual = new AbortController();
+  mostrarLoading(textoLoading);
+  try {
+    let resp;
+    if (metodo === 'GET'){
+      resp = await fetch(API_URL + '?' + new URLSearchParams(params).toString(), { signal: abortControllerAtual.signal });
+    } else {
+      resp = await fetch(API_URL, { method: 'POST', body: new URLSearchParams(params), signal: abortControllerAtual.signal });
+    }
+    return await resp.json();
+  } catch (erro) {
+    if (erro.name === 'AbortError' || chamadaCancelada){
+      return { ok: false, cancelado: true };
+    }
+    throw erro;
+  } finally {
+    window.__requisicoesEmAndamento = Math.max(0, window.__requisicoesEmAndamento - 1);
+    esconderLoading();
+  }
+}
+
+// ---------- Código do backend (pra copiar nas configurações) ----------
+const CODE_GS = `/**
+ * CONTROLE FINANCEIRO (Google Apps Script) — v3
+ * -----------------------------------------------------------
+ * Abas: Transacoes, Fixos, Lembretes, LembretesFixos, Categorias, Configuracoes
+ *
+ * Como instalar:
+ * 1. Crie uma planilha nova no Google Sheets.
+ * 2. Extensões > Apps Script. Apague o conteúdo e cole este arquivo.
+ * 3. Rode "inicializar" uma vez (cria as abas e categorias padrão).
+ * 4. Rode "configurarTrigger" uma vez (ativa a geração automática mensal
+ *    de transações fixas e lembretes recorrentes).
+ * 5. Implantar > Nova implantação > App da Web.
+ *    - Executar como: Eu
+ *    - Quem pode acessar: Qualquer pessoa
+ * 6. Copie a URL (termina em /exec) e cole nas Configurações do HTML.
+ */
+
+var ABA_TRANSACOES = 'Transacoes';
+var ABA_FIXOS = 'Fixos';
+var ABA_LEMBRETES = 'Lembretes';
+var ABA_LEMBRETES_FIXOS = 'LembretesFixos';
+var ABA_CATEGORIAS = 'Categorias';
+var ABA_CONFIGURACOES = 'Configuracoes';
+
+// Preenchido automaticamente quando este script é criado via provisionamento
+// automático (login com Google no app). Deixado vazio na cópia manual —
+// nesse caso, getSheet() cai para getActiveSpreadsheet(), que funciona
+// normalmente quando o script é vinculado pela própria interface do Sheets.
+var SPREADSHEET_ID = '';
+
+function getSheet(nome) {
+  var ss = SPREADSHEET_ID ? SpreadsheetApp.openById(SPREADSHEET_ID) : SpreadsheetApp.getActiveSpreadsheet();
+  return ss.getSheetByName(nome);
+}
+
+function inicializar() {
+  var ss = SPREADSHEET_ID ? SpreadsheetApp.openById(SPREADSHEET_ID) : SpreadsheetApp.getActiveSpreadsheet();
+  criarAbaSeNaoExiste(ss, ABA_TRANSACOES, ['ID', 'Data', 'Descricao', 'Tipo', 'Periodicidade', 'CategoriaTema', 'Valor', 'Origem', 'MesRef']);
+  criarAbaSeNaoExiste(ss, ABA_FIXOS, ['ID', 'Descricao', 'Tipo', 'Valor', 'DiaDoMes', 'Ativo', 'CategoriaTema']);
+  criarAbaSeNaoExiste(ss, ABA_LEMBRETES, ['ID', 'Descricao', 'Tipo', 'Valor', 'Vencimento', 'Recorrente', 'Status', 'MesRef']);
+  criarAbaSeNaoExiste(ss, ABA_LEMBRETES_FIXOS, ['ID', 'Descricao', 'Tipo', 'Valor', 'DiaDoMes', 'Ativo']);
+
+  var criouCategorias = criarAbaSeNaoExiste(ss, ABA_CATEGORIAS, ['ID', 'Nome', 'Emoji', 'Tipo', 'Ativo']);
+  if (criouCategorias) popularCategoriasPadrao();
+
+  var criouConfig = criarAbaSeNaoExiste(ss, ABA_CONFIGURACOES, ['Chave', 'Valor']);
+  if (criouConfig) {
+    getSheet(ABA_CONFIGURACOES).appendRow(['DiaReferencia', 1]);
+  }
+}
+
+function criarAbaSeNaoExiste(ss, nome, cabecalho) {
+  if (!ss.getSheetByName(nome)) {
+    var sh = ss.insertSheet(nome);
+    sh.appendRow(cabecalho);
+    sh.setFrozenRows(1);
+    return true;
+  }
+  return false;
+}
+
+function popularCategoriasPadrao() {
+  var sh = getSheet(ABA_CATEGORIAS);
+  var gastos = [
+    ['Alimentação', '🍔'], ['Transporte', '🚗'], ['Combustível', '⛽'],
+    ['Pensão', '👪'], ['Aluguel', '🏠'], ['Energia', '💡'],
+    ['Água', '💧'], ['Cartão', '💳'], ['Internet', '📶']
+  ];
+  var ganhos = [
+    ['Salário', '💰'], ['Aluguel', '🏠'], ['Pensão', '👪'],
+    ['Freelance', '💼'], ['Investimentos', '📈'], ['Vendas', '🛒'],
+    ['Comissão', '💵'], ['Presente', '🎁'], ['Bônus', '🎉']
+  ];
+  gastos.forEach(function (c) { sh.appendRow([Utilities.getUuid(), c[0], c[1], 'Despesa', true]); });
+  ganhos.forEach(function (c) { sh.appendRow([Utilities.getUuid(), c[0], c[1], 'Receita', true]); });
+}
+
+function configurarTrigger() {
+  var triggers = ScriptApp.getProjectTriggers();
+  for (var i = 0; i < triggers.length; i++) {
+    if (triggers[i].getHandlerFunction() === 'gerarRecorrentesDoMes') {
+      ScriptApp.deleteTrigger(triggers[i]);
+    }
+  }
+  ScriptApp.newTrigger('gerarRecorrentesDoMes')
+    .timeBased()
+    .everyDays(1)
+    .atHour(6)
+    .create();
+}
+
+// ---------- Menu na própria planilha ----------
+
+function onOpen() {
+  SpreadsheetApp.getUi()
+    .createMenu('⚙️ DuC Finanças')
+    .addItem('Configurar tudo (1ª vez)', 'configurarTudo')
+    .addToUi();
+}
+
+function configurarTudo() {
+  inicializar();
+  configurarTrigger();
+  PropertiesService.getScriptProperties().setProperty('inicializado', 'true');
+  PropertiesService.getScriptProperties().setProperty('triggerConfigurado', 'true');
+  SpreadsheetApp.getUi().alert('Tudo certo! Agora vá em Implantar > Nova implantação para gerar a URL do app.');
+}
+
+// Chamada automaticamente em toda requisição da API. Cria as abas na
+// primeira vez que o app da web é acessado, sem precisar rodar nada
+// manualmente no editor — necessário pro fluxo de configuração automática
+// (que implanta via API e nunca abre o editor do Apps Script).
+//
+// O gatilho mensal é configurado separadamente (com seu próprio controle de
+// sucesso): se o token OAuth usado no provisionamento ainda não tiver o
+// escopo "script.scriptapp", essa etapa falha sozinha sem travar o resto da
+// API — e tenta de novo na próxima requisição, em vez de ficar preso num
+// erro permanente.
+function garantirInicializado() {
+  var props = PropertiesService.getScriptProperties();
+
+  if (props.getProperty('inicializado') !== 'true') {
+    inicializar();
+    props.setProperty('inicializado', 'true');
+  }
+
+  if (props.getProperty('triggerConfigurado') !== 'true') {
+    try {
+      configurarTrigger();
+      props.setProperty('triggerConfigurado', 'true');
+    } catch (err) {
+      // Sem permissão ainda (ou outro erro pontual) pra criar o gatilho.
+      // Não interrompe a API — as abas já existem e os outros endpoints
+      // funcionam normalmente. Tenta de novo na próxima requisição.
+    }
+  }
+}
+
+// ---------- Roteamento da API ----------
+
+var URL_APP = 'https://ductrabalho.github.io/Financas.DuC/';
+
+function doGet(e) {
+  // Chamada SEM 'action' = o usuário chegou aqui pelo redirecionamento do
+  // Google após autorizar o app.
+  //
+  // IMPORTANTE: o HtmlService renderiza esta página dentro de um iframe de
+  // origem cruzada. O navegador PROÍBE que um iframe navegue a janela do topo
+  // por script (proteção anti-framebusting), então redirecionamento automático
+  // é impossível aqui — testado e confirmado. O único caminho permitido é um
+  // link com target="_top" clicado pelo usuário. Por isso a página abaixo
+  // mostra um botão grande em vez de tentar voltar sozinha.
+  if (!e || !e.parameter || !e.parameter.action) {
+    try { garantirInicializado(); } catch (err) {}
+    var html =
+      '<!DOCTYPE html><html><head><meta charset="utf-8">' +
+      '<style>' +
+      '*{box-sizing:border-box}' +
+      'body{background:#14161a;color:#e9e6df;font-family:system-ui,-apple-system,sans-serif;' +
+      'display:flex;align-items:center;justify-content:center;min-height:95vh;' +
+      'margin:0;text-align:center;padding:24px}' +
+      '.logo{width:min(72vw,290px);height:auto;margin:0 auto 30px;display:block;' +
+      'opacity:0;animation:ap .7s ease forwards}' +
+      '.ok{font-size:1.2rem;margin:0 0 8px;opacity:0;animation:ap .6s ease .2s forwards}' +
+      '.sub{opacity:0;font-size:.95rem;margin:0 0 30px;line-height:1.55;color:#8f95a0;' +
+      'animation:apSub .6s ease .35s forwards}' +
+      '.btn{display:inline-block;background:#4a90e2;color:#fff;text-decoration:none;' +
+      'font-size:1.08rem;font-weight:600;padding:16px 34px;border-radius:12px;' +
+      'opacity:0;animation:ap .6s ease .5s forwards}' +
+      '@keyframes ap{to{opacity:1}}' +
+      '@keyframes apSub{to{opacity:.75}}' +
+      '</style></head><body><div>' +
+      '<img class="logo" src="' + URL_APP + 'logo.png" alt="Finan\u00e7as.DuC">' +
+      '<p class="ok">\u2705 Tudo pronto!</p>' +
+      '<p class="sub">Seu banco de dados foi criado com sucesso.</p>' +
+      '<a class="btn" href="' + URL_APP + '" target="_top">Entrar nas minhas finan\u00e7as</a>' +
+      '</div></body></html>';
+    return HtmlService.createHtmlOutput(html)
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+  }
+  return handleRequest(e);
+}
+function doPost(e) { return handleRequest(e); }
+
+function handleRequest(e) {
+  var resultado;
+  try {
+    garantirInicializado();
+    var acao = e.parameter.action;
+    switch (acao) {
+      case 'listarTransacoes': resultado = listarTransacoes(e.parameter.inicio, e.parameter.fim); break;
+      case 'criarTransacao': resultado = criarTransacao(JSON.parse(e.parameter.dados)); break;
+      case 'apagarTransacao': resultado = apagarPorId(ABA_TRANSACOES, e.parameter.id); break;
+      case 'resumo': resultado = resumo(e.parameter.inicio, e.parameter.fim); break;
+      case 'listarFixos': resultado = listarFixos(); break;
+      case 'criarFixo': resultado = criarFixo(JSON.parse(e.parameter.dados)); break;
+      case 'apagarFixo': resultado = apagarPorId(ABA_FIXOS, e.parameter.id); break;
+      case 'listarLembretes': resultado = listarLembretes(e.parameter.inicio, e.parameter.fim); break;
+      case 'criarLembrete': resultado = criarLembrete(JSON.parse(e.parameter.dados)); break;
+      case 'apagarLembrete': resultado = apagarPorId(ABA_LEMBRETES, e.parameter.id); break;
+      case 'alternarStatusLembrete': resultado = alternarStatusLembrete(e.parameter.id); break;
+      case 'listarCategorias': resultado = listarCategorias(e.parameter.tipo); break;
+      case 'criarCategoria': resultado = criarCategoria(JSON.parse(e.parameter.dados)); break;
+      case 'apagarCategoria': resultado = apagarPorId(ABA_CATEGORIAS, e.parameter.id); break;
+      case 'obterConfiguracoes': resultado = obterConfiguracoes(); break;
+      case 'salvarConfiguracoes': resultado = salvarConfiguracoes(JSON.parse(e.parameter.dados)); break;
+      case 'importarDeTexto': resultado = importarDeTexto(e.parameter.texto, e.parameter.origemApp); break;
+      default: resultado = { ok: false, erro: 'Ação desconhecida: ' + acao };
+    }
+  } catch (err) {
+    resultado = { ok: false, erro: err.message };
+  }
+  return ContentService
+    .createTextOutput(JSON.stringify(resultado))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+// ---------- Utilidades ----------
+
+function hojeISO() {
+  return Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+}
+
+function formatarDataCelula(v) {
+  if (v instanceof Date) return Utilities.formatDate(v, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  return String(v).substring(0, 10);
+}
+
+function dentroDoIntervalo(data, inicio, fim) {
+  if (inicio && data < inicio) return false;
+  if (fim && data > fim) return false;
+  return true;
+}
+
+function apagarPorId(aba, id) {
+  var sh = getSheet(aba);
+  var valores = sh.getDataRange().getValues();
+  for (var i = 1; i < valores.length; i++) {
+    if (valores[i][0] === id) {
+      sh.deleteRow(i + 1);
+      return { ok: true };
+    }
+  }
+  return { ok: false, erro: 'Não encontrado' };
+}
+
+// ---------- Transações ----------
+// Colunas: ID(0) Data(1) Descricao(2) Tipo(3) Periodicidade(4) CategoriaTema(5) Valor(6) Origem(7) MesRef(8)
+
+function criarTransacao(d) {
+  var sh = getSheet(ABA_TRANSACOES);
+  var id = Utilities.getUuid();
+  var data = d.data || hojeISO();
+  sh.appendRow([id, data, d.descricao, d.tipo, d.periodicidade, d.categoriaTema || '', Number(d.valor), d.origem || 'Manual', data.substring(0, 7)]);
+  return { ok: true, id: id };
+}
+
+function listarTransacoes(inicio, fim) {
+  var sh = getSheet(ABA_TRANSACOES);
+  var valores = sh.getDataRange().getValues();
+  var linhas = [];
+  for (var i = 1; i < valores.length; i++) {
+    var r = valores[i];
+    var data = formatarDataCelula(r[1]);
+    if (dentroDoIntervalo(data, inicio, fim)) {
+      linhas.push({ id: r[0], data: data, descricao: r[2], tipo: r[3], periodicidade: r[4], categoriaTema: r[5], valor: r[6], origem: r[7] });
+    }
+  }
+  return { ok: true, transacoes: linhas };
+}
+
+function resumo(inicio, fim) {
+  var sh = getSheet(ABA_TRANSACOES);
+  var valores = sh.getDataRange().getValues();
+  var receitas = 0, gastos = 0;
+  var porPeriodicidade = { Fixa: 0, 'Variável': 0, 'Única': 0 };
+  var porCategoria = {};
+  for (var i = 1; i < valores.length; i++) {
+    var r = valores[i];
+    var data = formatarDataCelula(r[1]);
+    if (!dentroDoIntervalo(data, inicio, fim)) continue;
+    var valor = Number(r[6]);
+    if (r[3] === 'Receita') {
+      receitas += valor;
+    } else {
+      gastos += valor;
+      if (porPeriodicidade.hasOwnProperty(r[4])) porPeriodicidade[r[4]] += valor;
+      var cat = r[5] || 'Sem categoria';
+      porCategoria[cat] = (porCategoria[cat] || 0) + valor;
+    }
+  }
+  return { ok: true, receitas: receitas, gastos: gastos, saldo: receitas - gastos, porPeriodicidade: porPeriodicidade, porCategoria: porCategoria };
+}
+
+// ---------- Fixos (templates de transações recorrentes) ----------
+// Colunas: ID(0) Descricao(1) Tipo(2) Valor(3) DiaDoMes(4) Ativo(5) CategoriaTema(6)
+
+function criarFixo(d) {
+  var sh = getSheet(ABA_FIXOS);
+  var id = Utilities.getUuid();
+  sh.appendRow([id, d.descricao, d.tipo, Number(d.valor), Number(d.diaDoMes), true, d.categoriaTema || '']);
+  return { ok: true, id: id };
+}
+
+function listarFixos() {
+  var sh = getSheet(ABA_FIXOS);
+  var valores = sh.getDataRange().getValues();
+  var linhas = [];
+  for (var i = 1; i < valores.length; i++) {
+    var r = valores[i];
+    linhas.push({ id: r[0], descricao: r[1], tipo: r[2], valor: r[3], diaDoMes: r[4], ativo: r[5], categoriaTema: r[6] });
+  }
+  return { ok: true, fixos: linhas };
+}
+
+// ---------- Lembretes ----------
+
+function criarLembrete(d) {
+  var sh = getSheet(ABA_LEMBRETES);
+  var id = Utilities.getUuid();
+  var venc = d.vencimento || hojeISO();
+  sh.appendRow([id, d.descricao, d.tipo, Number(d.valor), venc, !!d.recorrente, 'Pendente', venc.substring(0, 7)]);
+  if (d.recorrente) {
+    var diaDoMes = new Date(venc + 'T00:00:00').getDate();
+    criarLembreteFixo({ descricao: d.descricao, tipo: d.tipo, valor: d.valor, diaDoMes: diaDoMes });
+  }
+  return { ok: true, id: id };
+}
+
+function listarLembretes(inicio, fim) {
+  var sh = getSheet(ABA_LEMBRETES);
+  var valores = sh.getDataRange().getValues();
+  var linhas = [];
+  for (var i = 1; i < valores.length; i++) {
+    var r = valores[i];
+    var venc = formatarDataCelula(r[4]);
+    if (dentroDoIntervalo(venc, inicio, fim)) {
+      linhas.push({ id: r[0], descricao: r[1], tipo: r[2], valor: r[3], vencimento: venc, recorrente: r[5], status: r[6] });
+    }
+  }
+  return { ok: true, lembretes: linhas };
+}
+
+function alternarStatusLembrete(id) {
+  var sh = getSheet(ABA_LEMBRETES);
+  var valores = sh.getDataRange().getValues();
+  for (var i = 1; i < valores.length; i++) {
+    if (valores[i][0] === id) {
+      var novo = valores[i][6] === 'Pendente' ? 'Concluído' : 'Pendente';
+      sh.getRange(i + 1, 7).setValue(novo);
+      return { ok: true, status: novo };
+    }
+  }
+  return { ok: false, erro: 'Não encontrado' };
+}
+
+function criarLembreteFixo(d) {
+  var sh = getSheet(ABA_LEMBRETES_FIXOS);
+  var id = Utilities.getUuid();
+  sh.appendRow([id, d.descricao, d.tipo, Number(d.valor), Number(d.diaDoMes), true]);
+  return { ok: true, id: id };
+}
+
+// ---------- Categorias temáticas ----------
+
+function listarCategorias(tipo) {
+  var sh = getSheet(ABA_CATEGORIAS);
+  var valores = sh.getDataRange().getValues();
+  var linhas = [];
+  for (var i = 1; i < valores.length; i++) {
+    var r = valores[i];
+    if (!tipo || r[3] === tipo) {
+      linhas.push({ id: r[0], nome: r[1], emoji: r[2], tipo: r[3], ativo: r[4] });
+    }
+  }
+  return { ok: true, categorias: linhas };
+}
+
+function criarCategoria(d) {
+  var sh = getSheet(ABA_CATEGORIAS);
+  var id = Utilities.getUuid();
+  sh.appendRow([id, d.nome, d.emoji, d.tipo, true]);
+  return { ok: true, id: id };
+}
+
+// ---------- Configurações (chave/valor) ----------
+
+function obterConfiguracoes() {
+  var sh = getSheet(ABA_CONFIGURACOES);
+  var valores = sh.getDataRange().getValues();
+  var config = {};
+  for (var i = 1; i < valores.length; i++) {
+    config[valores[i][0]] = valores[i][1];
+  }
+  return { ok: true, diaReferencia: Number(config.DiaReferencia || 1) };
+}
+
+// ---------- Importação automática via notificação (MacroDroid/Tasker) ----------
+
+function importarDeTexto(texto, origemApp) {
+  var interpretado = interpretarNotificacao(texto || '');
+  var sh = getSheet(ABA_TRANSACOES);
+  var id = Utilities.getUuid();
+  var data = hojeISO();
+  var descricaoFinal = interpretado.descricao + (origemApp ? ' (' + origemApp + ')' : '');
+  sh.appendRow([id, data, descricaoFinal, interpretado.tipo, 'Variável', '', interpretado.valor, 'Notificação', data.substring(0, 7)]);
+  return { ok: true, id: id, interpretado: interpretado };
+}
+
+// Heurística simples por palavras-chave + regex de valor. Não é perfeita pra
+// todos os bancos, mas cobre a maioria das notificações de Pix, compra no
+// cartão e pagamento de boleto. A descrição cai no texto original (limpo do
+// valor) quando não dá pra extrair algo mais específico.
+function interpretarNotificacao(texto) {
+  var t = String(texto);
+  var tLower = t.toLowerCase();
+
+  var matchValor = t.match(/R\$\s?(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2}|\d+)/);
+  var valor = 0;
+  if (matchValor) {
+    valor = Number(matchValor[1].replace(/\./g, '').replace(',', '.'));
+  }
+
+  var palavrasReceita = ['recebido', 'recebeu', 'depósito', 'deposito', 'estorno', 'creditado', 'crédito recebido'];
+  var palavrasDespesa = ['compra', 'pagamento', 'enviado', 'enviou', 'débito', 'debito', 'saque', 'fatura', 'boleto', 'transferência enviada', 'transferencia enviada'];
+
+  var tipo = 'Despesa';
+  for (var i = 0; i < palavrasReceita.length; i++) {
+    if (tLower.indexOf(palavrasReceita[i]) !== -1) { tipo = 'Receita'; break; }
+  }
+  // Palavras de despesa têm prioridade (evita falso positivo em frases como
+  // "pagamento recebido pelo lojista" interpretadas como receita do usuário).
+  for (var j = 0; j < palavrasDespesa.length; j++) {
+    if (tLower.indexOf(palavrasDespesa[j]) !== -1) { tipo = 'Despesa'; break; }
+  }
+
+  var descricao = matchValor ? t.replace(matchValor[0], '').trim() : t.trim();
+  descricao = descricao.replace(/\s{2,}/g, ' ').replace(/^[:\-–,.\s]+|[:\-–,.\s]+$/g, '');
+  descricao = descricao.substring(0, 120);
+  if (!descricao) descricao = 'Notificação bancária';
+
+  return { tipo: tipo, valor: valor, descricao: descricao };
+}
+
+function salvarConfiguracoes(d) {
+  var sh = getSheet(ABA_CONFIGURACOES);
+  var valores = sh.getDataRange().getValues();
+  var chaves = { DiaReferencia: d.diaReferencia };
+  for (var chave in chaves) {
+    var encontrada = false;
+    for (var i = 1; i < valores.length; i++) {
+      if (valores[i][0] === chave) {
+        sh.getRange(i + 1, 2).setValue(chaves[chave]);
+        encontrada = true;
+        break;
+      }
+    }
+    if (!encontrada) sh.appendRow([chave, chaves[chave]]);
+  }
+  return { ok: true };
+}
+
+// ---------- Geração automática mensal ----------
+
+function gerarRecorrentesDoMes() {
+  gerarTransacoesFixas();
+  gerarLembretesRecorrentes();
+}
+
+function gerarTransacoesFixas() {
+  var fixosSheet = getSheet(ABA_FIXOS);
+  var transSheet = getSheet(ABA_TRANSACOES);
+  var fixos = fixosSheet.getDataRange().getValues();
+  var transacoes = transSheet.getDataRange().getValues();
+
+  var hoje = new Date();
+  var mesRefAtual = Utilities.formatDate(hoje, Session.getScriptTimeZone(), 'yyyy-MM');
+  var diaHoje = hoje.getDate();
+  var ultimoDiaMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).getDate();
+
+  for (var i = 1; i < fixos.length; i++) {
+    var f = fixos[i];
+    var descricao = f[1], tipo = f[2], valor = f[3], diaDoMes = f[4], ativo = f[5], categoriaTema = f[6];
+    if (ativo !== true) continue;
+
+    var diaAjustado = Math.min(diaDoMes, ultimoDiaMes);
+    if (diaHoje !== diaAjustado) continue;
+
+    var jaExiste = false;
+    for (var j = 1; j < transacoes.length; j++) {
+      if (transacoes[j][8] === mesRefAtual && transacoes[j][2] === descricao && transacoes[j][7] === 'Auto') {
+        jaExiste = true;
+        break;
+      }
+    }
+    if (jaExiste) continue;
+
+    var dataLanc = Utilities.formatDate(hoje, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+    transSheet.appendRow([Utilities.getUuid(), dataLanc, descricao, tipo, 'Fixa', categoriaTema || '', valor, 'Auto', mesRefAtual]);
+  }
+}
+
+function gerarLembretesRecorrentes() {
+  var fixosSheet = getSheet(ABA_LEMBRETES_FIXOS);
+  var lembSheet = getSheet(ABA_LEMBRETES);
+  var fixos = fixosSheet.getDataRange().getValues();
+  var lembretes = lembSheet.getDataRange().getValues();
+
+  var hoje = new Date();
+  var mesRefAtual = Utilities.formatDate(hoje, Session.getScriptTimeZone(), 'yyyy-MM');
+  var ultimoDiaMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).getDate();
+
+  for (var i = 1; i < fixos.length; i++) {
+    var f = fixos[i];
+    var descricao = f[1], tipo = f[2], valor = f[3], diaDoMes = f[4], ativo = f[5];
+    if (ativo !== true) continue;
+
+    var jaExiste = false;
+    for (var j = 1; j < lembretes.length; j++) {
+      if (lembretes[j][7] === mesRefAtual && lembretes[j][1] === descricao) {
+        jaExiste = true;
+        break;
+      }
+    }
+    if (jaExiste) continue;
+
+    var diaAjustado = Math.min(diaDoMes, ultimoDiaMes);
+    var vencimento = new Date(hoje.getFullYear(), hoje.getMonth(), diaAjustado);
+    var vencISO = Utilities.formatDate(vencimento, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+    lembSheet.appendRow([Utilities.getUuid(), descricao, tipo, valor, vencISO, true, 'Pendente', mesRefAtual]);
+  }
+}
+`;
+
+document.getElementById('btn-copiar-codigo').addEventListener('click', async () => {
+  const btn = document.getElementById('btn-copiar-codigo');
+  try {
+    await navigator.clipboard.writeText(CODE_GS);
+  } catch (err) {
+    const area = document.createElement('textarea');
+    area.value = CODE_GS;
+    document.body.appendChild(area);
+    area.select();
+    document.execCommand('copy');
+    document.body.removeChild(area);
+  }
+  const textoOriginal = btn.textContent;
+  btn.textContent = 'Copiado!';
+  setTimeout(() => { btn.textContent = textoOriginal; }, 2000);
+});
+
+// ---------- Configuração automática via Google (OAuth) ----------
+let tokenClient = null;
+let googleAccessToken = null;
+let aposLoginCallback = null;
+const elStatusAuto = document.getElementById('status-config-auto');
+const elBtnAuto = document.getElementById('btn-config-auto');
+
+function clientIdConfigurado(){
+  return GOOGLE_CLIENT_ID && !GOOGLE_CLIENT_ID.includes('SEU_CLIENT_ID_AQUI');
+}
+
+function inicializarGoogleAuth(){
+  if (tokenClient) return;
+  if (!clientIdConfigurado() || !(window.google && google.accounts && google.accounts.oauth2)) return;
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: GOOGLE_CLIENT_ID,
+    scope: GOOGLE_SCOPES,
+    callback: async (resp) => {
+      if (resp.error){
+        if (aposLoginCallback) await aposLoginCallback(null, resp.error);
+        else {
+          atualizarStatusAuto('erro', '❌ Permissão não concedida (' + resp.error + ').');
+          elBtnAuto.disabled = false;
+        }
+        return;
+      }
+      googleAccessToken = resp.access_token;
+      if (aposLoginCallback) await aposLoginCallback(resp.access_token, null);
+      else await rodarProvisionamento();
+    }
+  });
+}
+
+function solicitarLogin(callback){
+  aposLoginCallback = callback;
+  if (!clientIdConfigurado()){
+    alert('Este app ainda não tem um Client ID do Google configurado pelo desenvolvedor.');
+    return;
+  }
+  if (!tokenClient) inicializarGoogleAuth();
+  if (!tokenClient){
+    alert('O login do Google ainda não carregou. Aguarde alguns segundos e tente de novo.');
+    return;
+  }
+  tokenClient.requestAccessToken();
+}
+
+function atualizarStatusElemento(el, tipo, texto){ // ALTERADO
+  el.classList.remove('oculto');
+  el.className = 'status-auto status-' + tipo;
+  el.textContent = texto;
+}
+function atualizarStatusAuto(tipo, texto){
+  atualizarStatusElemento(elStatusAuto, tipo, texto); // ALTERADO
+}
+
+function mostrarSucessoComUrl(url, el = elStatusAuto){ // ALTERADO
+  el.classList.remove('oculto');
+  el.className = 'status-auto status-sucesso';
+  el.innerHTML = `
+    ✅ Tudo certo! Seu banco de dados está pronto e conectado.<br><br>
+    <span style="font-size:0.68rem; text-transform:uppercase; letter-spacing:0.04em; opacity:0.85;">URL do seu banco de dados — guarde pra usar em outro celular/computador</span>
+    <div style="display:flex; gap:8px; margin-top:6px;">
+      <input type="text" id="input-url-sucesso" readonly value="${url}" style="margin-bottom:0; font-size:0.7rem; color:var(--text); background:var(--surface-2);" onclick="this.select()">
+      <button type="button" id="btn-copiar-url-sucesso" style="flex-shrink:0;">Copiar</button>
+    </div>
+  `;
+  document.getElementById('btn-copiar-url-sucesso').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(url); } catch (err) {
+      const input = document.getElementById('input-url-sucesso');
+      input.select();
+      document.execCommand('copy');
+    }
+    const btn = document.getElementById('btn-copiar-url-sucesso');
+    btn.textContent = 'Copiado!';
+    setTimeout(() => { btn.textContent = 'Copiar'; }, 2000);
+  });
+}
+
+async function mostrarAvisoComUrl(url, el = elStatusAuto){ // ALTERADO
+  atualizarStatusElemento(el, 'info', '5/6 — Verificando autorização...');
+  const teste = await fetch(url + '?action=obterConfiguracoes').then(r => r.json()).catch(() => null);
+  if (teste && teste.ok){
+    API_URL = url;
+    localStorage.setItem('duc_financas_api_url', url);
+    limparProvisionamentoPendente();
+    mostrarSucessoComUrl(url, el);
+    await aposConectarAPI();
+  } else {
+    el.classList.remove('oculto');
+    el.className = 'status-auto status-aviso';
+    el.innerHTML = `\u26a0\ufe0f Autoriza\u00e7\u00e3o necess\u00e1ria. Clique abaixo para abrir a p\u00e1gina do Google, aceite TODOS os acessos pedidos \u2014 voc\u00ea volta pra c\u00e1 automaticamente.<br><div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;"><button type="button" id="btn-abrir-autorizacao-manual">Abrir autoriza\u00e7\u00e3o</button></div>`; // ALTERADO
+    document.getElementById('btn-abrir-autorizacao-manual').addEventListener('click', () => {
+      // Mesma aba: evita popup bloqueado e abas órfãs no mobile.
+      localStorage.setItem('duc_financas_auth_pendente', '1');
+      location.href = url;
+    });
+  }
+}
+
+// Fica testando a conexão em segundo plano enquanto o usuário resolve a
+// autorização na outra aba. Quando a aba volta a ficar visível (ou a cada
+// poucos segundos) testa de novo; ao dar certo, segue pro passo 6 sozinho.
+// ⚠️ OBSOLETA desde V00.033 — era usada no fluxo de popup/aba nova.
+// Mantida apenas por segurança; o fluxo atual usa aba única (location.href).
+function aguardarAutorizacaoEmSegundoPlano(url, el = elStatusAuto){
+  if (window.__aguardandoAutorizacaoDuC) return; // já tem um monitor rodando
+  window.__aguardandoAutorizacaoDuC = true;
+
+  const btnContinuar = document.getElementById('btn-continuar-aviso');
+  const btnTentar = document.getElementById('btn-tentar-novo-aviso');
+  if (btnContinuar) btnContinuar.disabled = true;
+  if (btnTentar) btnTentar.disabled = true;
+  if (btnTentar) btnTentar.textContent = 'Aguardando você concluir na outra aba...';
+
+  let parar = false;
+  const limpar = () => {
+    parar = true;
+    window.__aguardandoAutorizacaoDuC = false;
+    document.removeEventListener('visibilitychange', aoVoltarVisivel);
+  };
+
+  const testarAgora = async () => {
+    if (parar) return false;
+    const teste = await fetch(url + '?action=obterConfiguracoes').then(r => r.json()).catch(() => null);
+    if (teste && teste.ok){
+      limpar();
+      // Fechar a aba de autorização automaticamente (técnica cross-browser)
+      try {
+        // Abre about:blank no mesmo nome e fecha – funciona mesmo no mobile
+        const fechar = window.open('about:blank', 'ducAuth');
+        if (fechar) fechar.close();
+      } catch(e) {}
+      try {
+        if (window.__abaAutorizacaoDuC && !window.__abaAutorizacaoDuC.closed)
+          window.__abaAutorizacaoDuC.close();
+      } catch(e) {}
+      window.__abaAutorizacaoDuC = null;
+      API_URL = url;
+      localStorage.setItem('duc_financas_api_url', url);
+      limparProvisionamentoPendente();
+      mostrarSucessoComUrl(url, el); // ALTERADO
+      await aposConectarAPI();
+      return true;
+    }
+    return false;
+  };
+
+  const aoVoltarVisivel = () => {
+    if (document.visibilityState === 'visible') testarAgora();
+  };
+  document.addEventListener('visibilitychange', aoVoltarVisivel);
+
+  (async () => {
+    while (!parar){
+      await new Promise(r => setTimeout(r, 4000));
+      const ok = await testarAgora();
+      if (ok) break;
+    }
+  })();
+}
+
+async function aguardarConexaoEFinalizar(url, statusFn = atualizarStatusAuto, el = elStatusAuto){ // ALTERADO
+  // ── Etapa 5: abrir a página de autorização do Google e esperar o aceite ──
+  // ── Primeiro testa: se já está autorizado, nem precisa redirecionar ──
+  const testePrevio = await fetch(url + '?action=obterConfiguracoes').then(r => r.json()).catch(() => null);
+  if (testePrevio && testePrevio.ok){
+    API_URL = url;
+    localStorage.setItem('duc_financas_api_url', url);
+    limparProvisionamentoPendente();
+    mostrarSucessoComUrl(url, el);
+    await aposConectarAPI();
+    return;
+  }
+
+  // ── Ainda não autorizado: navega a PRÓPRIA aba para a autorização ──
+  // Usar a mesma aba (em vez de window.open) evita popup bloqueado e abas
+  // órfãs que não podem ser fechadas por script — problema comum no mobile.
+  // O estado fica salvo no localStorage e o fluxo é retomado em iniciar().
+  statusFn('info', '5/6 — Abrindo a autorização do Google. Aceite TODOS os acessos pedidos — você volta pra cá automaticamente.');
+  localStorage.setItem('duc_financas_auth_pendente', '1');
+  await new Promise(r => setTimeout(r, 1200)); // deixa o usuário ler o aviso
+  location.href = url;
+}
+
+if (elBtnAuto) elBtnAuto.addEventListener('click', async () => {
+  // Se já tem URL salva (configuração concluída), só testa a conexão — não cria nada
+  if (API_URL){
+    elBtnAuto.disabled = true;
+    atualizarStatusAuto('info', 'Banco de dados já configurado — testando a conexão...');
+    const teste = await fetch(API_URL + '?action=obterConfiguracoes').then(r => r.json()).catch(() => null);
+    if (teste && teste.ok){
+      atualizarStatusAuto('sucesso', '✅ Conexão ativa. Seu banco de dados já está funcionando.');
+    } else {
+      atualizarStatusAuto('aviso', '⚠️ A URL salva não respondeu. Verifique sua conexão ou reconfigure manualmente abaixo.');
+    }
+    elBtnAuto.disabled = false;
+    return;
+  }
+
+  if (!clientIdConfigurado()){
+    alert('Este app ainda não tem um Client ID do Google configurado pelo desenvolvedor. Use a configuração manual abaixo.');
+    return;
+  }
+  if (!tokenClient) inicializarGoogleAuth();
+  if (!tokenClient){
+    atualizarStatusAuto('erro', '❌ O login do Google ainda não carregou. Aguarde alguns segundos e tente de novo.');
+    return;
+  }
+  elBtnAuto.disabled = true;
+  atualizarStatusAuto('info', 'Abrindo o login do Google...');
+  tokenClient.requestAccessToken();
+});
+
+async function chamarGoogleAPI(url, opts){
+  opts = opts || {};
+  const resp = await fetch(url, {
+    method: opts.method || 'GET',
+    headers: Object.assign({
+      'Authorization': 'Bearer ' + googleAccessToken,
+      'Content-Type': 'application/json'
+    }, opts.headers || {}),
+    body: opts.body ? JSON.stringify(opts.body) : undefined
+  });
+  const texto = await resp.text();
+  const dados = texto ? JSON.parse(texto) : {};
+  if (!resp.ok) throw new Error((dados.error && dados.error.message) || ('Erro na API do Google (' + resp.status + ')'));
+  return dados;
+}
+
+const CHAVE_PENDENTE = 'duc_financas_provisionamento_pendente';
+function obterProvisionamentoPendente(){
+  try { return JSON.parse(localStorage.getItem(CHAVE_PENDENTE) || 'null'); }
+  catch (e) { return null; }
+}
+function salvarProvisionamentoPendente(dados){
+  localStorage.setItem(CHAVE_PENDENTE, JSON.stringify(dados));
+}
+function limparProvisionamentoPendente(){
+  localStorage.removeItem(CHAVE_PENDENTE);
+}
+
+async function validarPlanilhaExistente(spreadsheetId){
+  // Tenta acessar a planilha diretamente pela Sheets API (já habilitada)
+  try {
+    const r = await chamarGoogleAPI(
+      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?fields=spreadsheetId`
+    );
+    return !!r.spreadsheetId;
+  } catch(e){ return false; }
+}
+
+async function buscarDeployAtivo(scriptId){
+  // Retorna a URL do primeiro deploy WEBAPP ativo via Script API (já habilitada)
+  try {
+    const r = await chamarGoogleAPI(`https://script.googleapis.com/v1/projects/${scriptId}/deployments`);
+    for (const d of (r.deployments || [])){
+      const ep = (d.entryPoints || []).find(e => e.webApp);
+      if (ep) return ep.webApp.url;
+    }
+  } catch(e){ /* sem permissão ainda */ }
+  return null;
+}
+
+async function rodarProvisionamento(spreadsheetIdExistente, statusFn = atualizarStatusAuto, el = elStatusAuto){ // ALTERADO
+  try {
+    let pendente = obterProvisionamentoPendente() || {};
+    if (spreadsheetIdExistente && pendente.spreadsheetId !== spreadsheetIdExistente){
+      pendente = { spreadsheetId: spreadsheetIdExistente };
+      salvarProvisionamentoPendente(pendente);
+    }
+
+    // ── Etapa 0: validar via API se o que está salvo ainda existe ──
+    statusFn('info', '1/6 — Verificando se já existe um banco de dados configurado...'); // ALTERADO
+    if (pendente.spreadsheetId){
+      const ainda = await validarPlanilhaExistente(pendente.spreadsheetId);
+      if (!ainda){
+        // ID salvo não existe mais (deletado) — recomeça do zero
+        pendente = {};
+        limparProvisionamentoPendente();
+        statusFn('info', '1/6 — Banco anterior não encontrado. Criando novo...'); // ALTERADO
+      } else {
+        statusFn('info', '1/6 — Banco de dados já existente encontrado — reutilizando.'); // ALTERADO
+      }
+    }
+
+    // ── Etapa 1: criar planilha só se não existe ──
+    if (!pendente.spreadsheetId){
+      statusFn('info', '2/6 — Criando sua planilha no Google Sheets...'); // ALTERADO
+      const planilha = await chamarGoogleAPI('https://sheets.googleapis.com/v4/spreadsheets', {
+        method: 'POST',
+        body: { properties: { title: NOME_PLANILHA } }
+      });
+      pendente.spreadsheetId = planilha.spreadsheetId;
+      salvarProvisionamentoPendente(pendente);
+    } else {
+      statusFn('info', '2/6 — Planilha já existente, reutilizando...'); // ALTERADO
+    }
+    const spreadsheetId = pendente.spreadsheetId;
+
+    // ── Etapa 2: criar script só se não existe ──
+    if (!pendente.scriptId){
+      statusFn('info', '3/6 — Criando o script vinculado à planilha...'); // ALTERADO
+      const projeto = await chamarGoogleAPI('https://script.googleapis.com/v1/projects', {
+        method: 'POST',
+        body: { title: NOME_PLANILHA, parentId: spreadsheetId }
+      });
+      pendente.scriptId = projeto.scriptId;
+      salvarProvisionamentoPendente(pendente);
+    } else {
+      statusFn('info', '3/6 — Script já existente, reutilizando...'); // ALTERADO
+    }
+    const scriptId = pendente.scriptId;
+
+    // Verificar se já tem deploy ativo
+    if (!pendente.urlExec){
+      const urlExistente = await buscarDeployAtivo(scriptId);
+      if (urlExistente){
+        pendente.urlExec = urlExistente;
+        salvarProvisionamentoPendente(pendente);
+      }
+    }
+
+    // ── Etapa 3: deploy só se não existe ──
+    if (!pendente.urlExec){
+      statusFn('info', '4/6 — Enviando o código e publicando como app da web...'); // ALTERADO
+      const codigoComId = CODE_GS.replace("var SPREADSHEET_ID = '';", "var SPREADSHEET_ID = '" + spreadsheetId + "';");
+      const manifest = {
+        timeZone: 'America/Sao_Paulo',
+        exceptionLogging: 'STACKDRIVER',
+        runtimeVersion: 'V8',
+        oauthScopes: [
+          'https://www.googleapis.com/auth/spreadsheets',
+          'https://www.googleapis.com/auth/script.scriptapp'
+        ],
+        webapp: { executeAs: 'USER_DEPLOYING', access: 'ANYONE_ANONYMOUS' }
+      };
+      await chamarGoogleAPI(`https://script.googleapis.com/v1/projects/${scriptId}/content`, {
+        method: 'PUT',
+        body: { files: [
+          { name: 'Code', type: 'SERVER_JS', source: codigoComId },
+          { name: 'appsscript', type: 'JSON', source: JSON.stringify(manifest) }
+        ]}
+      });
+      const versao = await chamarGoogleAPI(`https://script.googleapis.com/v1/projects/${scriptId}/versions`, {
+        method: 'POST',
+        body: { description: 'Provisionamento automático' }
+      });
+      const deploy = await chamarGoogleAPI(`https://script.googleapis.com/v1/projects/${scriptId}/deployments`, {
+        method: 'POST',
+        body: { versionNumber: versao.versionNumber, manifestFileName: 'appsscript', description: 'Deploy automático' }
+      });
+      const webAppEntry = (deploy.entryPoints || []).find(ep => ep.webApp);
+      const urlExec = webAppEntry && webAppEntry.webApp && webAppEntry.webApp.url;
+      if (!urlExec) throw new Error('A implantação não retornou uma URL de app da web.');
+      pendente.urlExec = urlExec;
+      salvarProvisionamentoPendente(pendente);
+    } else {
+      statusFn('info', '4/6 — Deploy já existente, reutilizando...'); // ALTERADO
+    }
+
+    inputConfigUrl.value = pendente.urlExec;
+    await aguardarConexaoEFinalizar(pendente.urlExec, statusFn, el); // ALTERADO
+  } catch (err) {
+    statusFn('erro', '❌ Algo deu errado: ' + err.message + '. Você pode tentar de novo ou usar a configuração manual abaixo.'); // ALTERADO
+  } finally {
+    elBtnAuto.disabled = false;
+  }
+}
+
+// ---------- Tela inicial: entrar / criar conta / mesclagem ----------
+const elTelaEntrada = document.getElementById('tela-entrada');
+const elTelaNaoEncontrada = document.getElementById('tela-conta-nao-encontrada');
+const elTelaMesclagem = document.getElementById('tela-mesclagem');
+const elAppConectado = document.getElementById('app-conectado');
+const elStatusEntrada = document.getElementById('status-entrada');
+const elBtnConfigHeader = document.getElementById('btn-config');
+
+function mostrarTela(tela){
+  // Detecta se estamos saindo da tela de login DIRETO para o app conectado
+  // (não de qualquer outra tela) — só nesse caso a logo "continua" visualmente,
+  // pois é a mesma jornada visual que o usuário estava acompanhando.
+  const vindoDoLoginParaApp = tela === elAppConectado && !elTelaEntrada.classList.contains('oculto');
+
+  if (vindoDoLoginParaApp){
+    // IMPORTANTE: o container de destino (#app-conectado) precisa estar
+    // display:flex ANTES de medir sua caixa no FLIP — enquanto ele tem
+    // .oculto (display:none), getBoundingClientRect() de qualquer coisa
+    // dentro dele retorna tudo zerado, o que quebra o cálculo da animação.
+    // Por isso aqui a ordem é: 1) revela o destino, 2) move+anima a logo,
+    // 3) só então esconde as telas antigas.
+    elAppConectado.classList.remove('oculto');
+    moverLogoParaHeader();
+    [elTelaEntrada, elTelaNaoEncontrada, elTelaMesclagem].forEach(t => t.classList.add('oculto'));
+  } else {
+    [elTelaEntrada, elTelaNaoEncontrada, elTelaMesclagem, elAppConectado].forEach(t => t.classList.add('oculto'));
+    tela.classList.remove('oculto');
+  }
+  elBtnConfigHeader.classList.toggle('oculto', tela !== elAppConectado);
+
+  // ── Momento ideal para buscar versão nova ──
+  // Ao chegar na tela de login ou na tela inicial do app o usuário não está
+  // no meio de nenhuma digitação, então é a hora mais segura para atualizar.
+  // A própria checarAtualizacao() confirma que ele está livre antes de recarregar.
+  if (typeof checarAtualizacao === 'function'){
+    if (tela === elTelaEntrada || tela === elAppConectado){
+      // Pequeno atraso: deixa a tela renderizar antes de fazer a requisição.
+      setTimeout(checarAtualizacao, 600);
+    }
+  }
+}
+
+/* Move a MESMA <img> da logo (que já está na tela de login) para dentro
+   do cabeçalho do app conectado, animando a diferença de tamanho/posição
+   via técnica FLIP — igual ao que acontece entre a splash e o login.
+   Assim nunca existem duas imagens (uma saindo, outra entrando): é uma
+   imagem só, o tempo todo, do início ao fim da jornada. */
+function moverLogoParaHeader(){
+  try {
+    const img = document.querySelector('#tela-entrada .logo-grande img');
+    const destino = document.querySelector('#app-conectado .logo');
+    if (!img || !destino) return;
+
+    const antes = img.getBoundingClientRect();
+    destino.appendChild(img);
+    const depois = img.getBoundingClientRect();
+
+    const escalaX = antes.width / depois.width;
+    const escalaY = antes.height / depois.height;
+    const deltaX = antes.left + antes.width / 2 - (depois.left + depois.width / 2);
+    const deltaY = antes.top + antes.height / 2 - (depois.top + depois.height / 2);
+    img.style.transition = 'none';
+    img.style.transformOrigin = 'center center';
+    img.style.transform = `translate(${deltaX}px, ${deltaY}px) scale(${escalaX}, ${escalaY})`;
+
+    requestAnimationFrame(() => {
+      img.style.transition = 'transform .5s cubic-bezier(.2,.7,.3,1)';
+      img.style.transform = 'none';
+      img.addEventListener('transitionend', () => {
+        img.style.transition = '';
+        img.style.transformOrigin = '';
+      }, { once: true });
+    });
+  } catch(e) { /* pior caso: a logo aparece no header sem animação, mas aparece */ }
+}
+
+function atualizarStatusEntrada(tipo, texto){
+  atualizarStatusElemento(elStatusEntrada, tipo, texto); // ALTERADO
+}
+
+async function buscarPlanilhasFinancasDuC(){
+  const params = new URLSearchParams({
+    q: `name = '${NOME_PLANILHA}' and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false`,
+    fields: 'files(id,name,modifiedTime)',
+    orderBy: 'modifiedTime desc'
+  });
+  const r = await chamarGoogleAPI('https://www.googleapis.com/drive/v3/files?' + params.toString());
+  return r.files || [];
+}
+
+async function conectarNaPlanilha(spreadsheetId, statusFn = atualizarStatusAuto, el = elStatusAuto){ // ALTERADO
+  await rodarProvisionamento(spreadsheetId, statusFn, el); // ALTERADO
+}
+
+// ALTERADO: tratarLoginEntrar e tratarLoginCriarConta foram unificados em
+// tratarLoginUnificado, seguindo fluxo_login_.png — os dois botões agora
+// fazem exatamente a mesma coisa (login + busca no Drive), e quando 0
+// planilhas são encontradas a criação roda direto (igual à v00.015),
+// mostrando os passos 0/4..4/4 na própria tela de entrada.
+async function tratarLoginUnificado(token, erro){
+  if (erro){ atualizarStatusEntrada('erro', '❌ Permissão não concedida (' + erro + ').'); return; }
+  atualizarStatusEntrada('info', `Procurando suas planilhas "${NOME_PLANILHA}" no Google Drive...`);
+  try {
+    const arquivos = await buscarPlanilhasFinancasDuC();
+    if (arquivos.length === 0){
+      await rodarProvisionamento(undefined, atualizarStatusEntrada, elStatusEntrada);
+    } else if (arquivos.length === 1){
+      atualizarStatusEntrada('info', 'Planilha encontrada — conectando...');
+      await conectarNaPlanilha(arquivos[0].id, atualizarStatusEntrada, elStatusEntrada);
+    } else {
+      abrirTelaMesclagem(arquivos);
+    }
+  } catch (err) {
+    atualizarStatusEntrada('erro', '❌ Não foi possível procurar suas planilhas: ' + err.message);
+  }
+}
+
+document.getElementById('btn-entrar-google').addEventListener('click', () => {
+  // Trocar para estado de carregamento
+  document.getElementById('login-default-content').classList.add('oculto');
+  document.getElementById('login-loading').classList.remove('oculto');
+
+  // Animação sequencial dos passos
+  const passos = ['lpasso-1', 'lpasso-2', 'lpasso-3'];
+  passos.forEach(id => document.getElementById(id).className = 'login-passo');
+  document.getElementById('lpasso-1').classList.add('ativo');
+
+  setTimeout(() => {
+    document.getElementById('lpasso-1').classList.add('concluido');
+    document.getElementById('lpasso-2').classList.add('ativo');
+  }, 1000);
+
+  setTimeout(() => {
+    document.getElementById('lpasso-2').classList.add('concluido');
+    document.getElementById('lpasso-3').classList.add('ativo');
+  }, 2200);
+
+  atualizarStatusEntrada('info', 'Abrindo o login do Google...');
+  solicitarLogin(tratarLoginUnificado);
+});
+document.getElementById('btn-nao-encontrada-criar').addEventListener('click', async () => {
+  mostrarTela(elTelaEntrada);
+  atualizarStatusEntrada('info', 'Criando sua conta...');
+  try { await rodarProvisionamento(undefined, atualizarStatusEntrada, elStatusEntrada); } // ALTERADO
+  catch (err) { atualizarStatusEntrada('erro', '❌ Algo deu errado: ' + err.message); }
+});
+document.getElementById('btn-nao-encontrada-voltar').addEventListener('click', () => {
+  mostrarTela(elTelaEntrada);
+  elStatusEntrada.classList.add('oculto');
+});
+
+// ---------- Mesclagem de planilhas do banco de dados ----------
+let arquivosParaMesclar = [];
+
+function formatarDataHoraBR(iso){
+  const d = new Date(iso);
+  return d.toLocaleDateString('pt-BR') + ' às ' + d.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+}
+
+function abrirTelaMesclagem(arquivos){
+  arquivosParaMesclar = arquivos;
+  const lista = document.getElementById('lista-mesclagem');
+  lista.innerHTML = arquivos.map((a, i) => `
+    <label class="item-mesclagem">
+      <input type="checkbox" class="check-mesclagem" value="${a.id}" checked>
+      <div class="item-mesclagem-info">
+        <span class="item-mesclagem-nome">${a.name || NOME_PLANILHA}</span>
+        <span class="item-mesclagem-data">Modificada em ${formatarDataHoraBR(a.modifiedTime)}</span>
+      </div>
+    </label>
+  `).join('');
+  document.getElementById('status-mesclagem').classList.add('oculto');
+  mostrarTela(elTelaMesclagem);
+}
+
+document.getElementById('btn-mesclagem-cancelar').addEventListener('click', () => {
+  arquivosParaMesclar = [];
+  mostrarTela(elTelaEntrada);
+  elStatusEntrada.classList.add('oculto');
+});
+
+function atualizarStatusMesclagem(tipo, texto){
+  const el = document.getElementById('status-mesclagem');
+  el.classList.remove('oculto');
+  el.className = 'status-auto status-' + tipo;
+  el.textContent = texto;
+}
+
+async function lerTodasAsAbas(spreadsheetId){
+  const meta = await chamarGoogleAPI(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?fields=sheets.properties.title`);
+  const titulos = (meta.sheets || []).map(s => s.properties.title);
+  const resultado = {};
+  for (const titulo of titulos){
+    const r = await chamarGoogleAPI(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(titulo)}`);
+    resultado[titulo] = r.values || [];
+  }
+  return resultado;
+}
+
+function mesclarValoresDeAbas(listaDeAbasPorPlanilha){
+  // Junta as linhas de cada aba (pelo nome) de todas as planilhas, mantendo o cabeçalho da primeira ocorrência
+  const abasUnificadas = {};
+  for (const abas of listaDeAbasPorPlanilha){
+    for (const nomeAba in abas){
+      const linhas = abas[nomeAba];
+      if (!linhas.length) continue;
+      if (!abasUnificadas[nomeAba]){
+        abasUnificadas[nomeAba] = linhas.slice();
+      } else {
+        abasUnificadas[nomeAba] = abasUnificadas[nomeAba].concat(linhas.slice(1));
+      }
+    }
+  }
+  return abasUnificadas;
+}
+
+document.getElementById('btn-mesclagem-confirmar').addEventListener('click', async () => {
+  const idsSelecionados = Array.from(document.querySelectorAll('.check-mesclagem:checked')).map(c => c.value);
+  if (idsSelecionados.length === 0){
+    atualizarStatusMesclagem('aviso', 'Selecione ao menos uma planilha.');
+    return;
+  }
+  const btn = document.getElementById('btn-mesclagem-confirmar');
+  btn.disabled = true;
+  try {
+    if (idsSelecionados.length === 1){
+      atualizarStatusMesclagem('info', 'Conectando na planilha selecionada...');
+      await conectarNaPlanilha(idsSelecionados[0], atualizarStatusMesclagem, document.getElementById('status-mesclagem')); // ALTERADO
+      return;
+    }
+    atualizarStatusMesclagem('info', 'Lendo os dados das planilhas selecionadas...');
+    const todasAbas = [];
+    for (const id of idsSelecionados){
+      todasAbas.push(await lerTodasAsAbas(id));
+    }
+    const abasUnificadas = mesclarValoresDeAbas(todasAbas);
+
+    atualizarStatusMesclagem('info', 'Criando a nova planilha unificada...');
+    const novaPlanilha = await chamarGoogleAPI('https://sheets.googleapis.com/v4/spreadsheets', {
+      method: 'POST',
+      body: { properties: { title: NOME_PLANILHA }, sheets: Object.keys(abasUnificadas).map(t => ({ properties: { title: t } })) }
+    });
+    const novoId = novaPlanilha.spreadsheetId;
+
+    for (const nomeAba in abasUnificadas){
+      await chamarGoogleAPI(`https://sheets.googleapis.com/v4/spreadsheets/${novoId}/values/${encodeURIComponent(nomeAba)}?valueInputOption=RAW`, {
+        method: 'PUT',
+        body: { values: abasUnificadas[nomeAba] }
+      });
+    }
+
+    atualizarStatusMesclagem('info', 'Removendo as planilhas antigas...');
+    for (const id of idsSelecionados){
+      await chamarGoogleAPI(`https://www.googleapis.com/drive/v3/files/${id}`, { method: 'DELETE' });
+    }
+
+    atualizarStatusMesclagem('info', 'Conectando na planilha unificada...');
+    await conectarNaPlanilha(novoId);
+  } catch (err) {
+    atualizarStatusMesclagem('erro', '❌ Algo deu errado ao mesclar: ' + err.message);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+if (!clientIdConfigurado()){
+  document.getElementById('btn-config-auto').classList.add('oculto');
+  document.getElementById('dica-config-auto').classList.add('oculto');
+  document.getElementById('btn-toggle-manual').classList.add('oculto');
+  document.querySelector('.divisor-ou').classList.add('oculto');
+  document.getElementById('bloco-manual').classList.remove('oculto');
+}
+
+document.getElementById('btn-toggle-manual').addEventListener('click', () => {
+  document.getElementById('bloco-manual').classList.toggle('oculto');
+});
+
+// ---------- Modal de configurações ----------
+function abrirModalConfig(){
+  inputConfigUrl.value = API_URL;
+  // Atualiza o rótulo do botão conforme o estado atual
+  if (API_URL){
+    elBtnAuto.textContent = '🔍 Verificar conexão com o banco de dados';
+  } else {
+    elBtnAuto.textContent = '🪄 Configurar automaticamente com Google';
+  }
+  modalConfig.classList.add('aberto');
+}
+function fecharModalConfig(){ modalConfig.classList.remove('aberto'); }
+
+document.getElementById('btn-config').addEventListener('click', abrirModalConfig);
+document.getElementById('modal-fechar').addEventListener('click', fecharModalConfig);
+modalConfig.addEventListener('click', e => { if (e.target === modalConfig) fecharModalConfig(); });
+
+// ---------- Header novo (menu +, logout) ----------
+function toggleMenuHeader(){
+  const dd = document.getElementById('dropdown-header');
+  const btn = document.getElementById('btn-plus-header');
+  const aberto = dd.classList.toggle('show');
+  btn.classList.toggle('open', aberto);
+}
+function fecharMenuHeader(){
+  document.getElementById('dropdown-header').classList.remove('show');
+  document.getElementById('btn-plus-header').classList.remove('open');
+}
+function irParaAbaTransacoes(){
+  const btnAba = document.querySelector('.tab-btn[data-aba="transacoes"]');
+  if (btnAba && !btnAba.classList.contains('ativo')) btnAba.click();
+}
+function abrirNovaTransacaoPeloHeader(){
+  fecharMenuHeader();
+  irParaAbaTransacoes();
+  document.getElementById('form-transacao').classList.remove('escondido');
+  document.getElementById('form-transacao').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+function abrirImportarPeloHeader(){
+  fecharMenuHeader();
+  irParaAbaTransacoes();
+  document.getElementById('arquivo-importar').click();
+}
+function fazerLogout(){
+  fecharMenuHeader();
+  if (!confirm('Sair e desconectar a planilha deste navegador?')) return;
+  localStorage.removeItem('duc_financas_api_url');
+  API_URL = '';
+  mostrarTela(elTelaEntrada);
+}
+// Fecha o dropdown ao clicar fora dele
+document.addEventListener('click', e => {
+  if (!e.target.closest('#btn-plus-header') && !e.target.closest('#dropdown-header')) {
+    fecharMenuHeader();
+  }
+});
+
+document.querySelectorAll('.modal-tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.modal-tab-btn').forEach(b => b.classList.remove('ativo'));
+    document.querySelectorAll('.modal-conteudo').forEach(c => c.classList.remove('ativo'));
+    btn.classList.add('ativo');
+    document.querySelector(`.modal-conteudo[data-mconteudo="${btn.dataset.mtab}"]`).classList.add('ativo');
+  });
+});
+
+document.getElementById('modal-salvar-url').addEventListener('click', async () => {
+  const url = inputConfigUrl.value.trim();
+  if (!url) { alert('Cole a URL do Apps Script.'); return; }
+  API_URL = url;
+  localStorage.setItem('duc_financas_api_url', url);
+  await aposConectarAPI();
+});
+
+// ---------- Categorias ----------
+async function carregarCategorias(){
+  const [desp, rec] = await Promise.all([
+    chamarAPI({ action: 'listarCategorias', tipo: 'Despesa' }),
+    chamarAPI({ action: 'listarCategorias', tipo: 'Receita' })
+  ]);
+  categoriasCache.Despesa = desp.categorias || [];
+  categoriasCache.Receita = rec.categorias || [];
+  popularSelectCategoria();
+  renderCategoriasConfig();
+}
+
+function popularSelectCategoria(){
+  const tipo = document.getElementById('t-tipo').value;
+  const sel = document.getElementById('t-categoria-tema');
+  const lista = categoriasCache[tipo] || [];
+  const valorAtual = sel.value;
+  sel.innerHTML = '<option value="">Sem categoria</option>' + lista.map(c => `<option value="${c.emoji} ${c.nome}">${c.emoji} ${c.nome}</option>`).join('');
+  if ([...sel.options].some(o => o.value === valorAtual)) sel.value = valorAtual;
+}
+document.getElementById('t-tipo').addEventListener('change', popularSelectCategoria);
+
+function renderCategoriasConfig(){
+  renderCatLista('cat-lista-despesa', categoriasCache.Despesa);
+  renderCatLista('cat-lista-receita', categoriasCache.Receita);
+}
+function renderCatLista(elId, lista){
+  const el = document.getElementById(elId);
+  if (!lista.length){ el.innerHTML = '<span class="cat-vazio">Nenhuma categoria.</span>'; return; }
+  el.innerHTML = lista.map(c => `<span class="cat-chip">${c.emoji} ${c.nome}<button data-id="${c.id}">✕</button></span>`).join('');
+  el.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      await chamarAPI({ action: 'apagarCategoria', id: btn.dataset.id }, 'POST');
+      await carregarCategorias();
+    });
+  });
+}
+
+document.querySelectorAll('.cat-add-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.getElementById('nc-tipo').value = btn.dataset.tipo;
+    document.getElementById('form-nova-categoria').classList.remove('escondido');
+  });
+});
+document.getElementById('nc-cancelar').addEventListener('click', () => document.getElementById('form-nova-categoria').classList.add('escondido'));
+document.getElementById('form-nova-categoria').addEventListener('submit', async e => {
+  e.preventDefault();
+  const tipo = document.getElementById('nc-tipo').value;
+  const emoji = document.getElementById('nc-emoji').value.trim() || '🏷️';
+  const nome = document.getElementById('nc-nome').value.trim();
+  if (!nome) return;
+  await chamarAPI({ action: 'criarCategoria', dados: JSON.stringify({ nome, emoji, tipo }) }, 'POST');
+  e.target.reset();
+  e.target.classList.add('escondido');
+  await carregarCategorias();
+});
+
+// ---------- Dia de referência ----------
+function renderDiaReferencia(){
+  const grade = document.getElementById('dia-ref-grade');
+  grade.innerHTML = diasReferenciaPredefinidos.map(d => `
+    <div class="dia-ref-item ${d.dia === diaReferenciaAtual ? 'selecionado' : ''}" data-dia="${d.dia}">
+      Dia ${d.dia}<span class="desc">${d.desc}</span>
+    </div>
+  `).join('');
+  grade.querySelectorAll('.dia-ref-item').forEach(item => {
+    item.addEventListener('click', () => {
+      diaReferenciaAtual = Number(item.dataset.dia);
+      document.getElementById('dia-ref-outro').value = '';
+      renderDiaReferencia();
+    });
+  });
+  const ehPredefinido = diasReferenciaPredefinidos.some(d => d.dia === diaReferenciaAtual);
+  document.getElementById('dia-ref-outro').value = ehPredefinido ? '' : diaReferenciaAtual;
+}
+document.getElementById('dia-ref-outro').addEventListener('input', e => {
+  const v = Number(e.target.value);
+  if (v >= 1 && v <= 31){ diaReferenciaAtual = v; renderDiaReferencia(); }
+});
+document.getElementById('modal-salvar-referencia').addEventListener('click', async () => {
+  await chamarAPI({ action: 'salvarConfiguracoes', dados: JSON.stringify({ diaReferencia: diaReferenciaAtual }) }, 'POST');
+  calcularPeriodoPadrao();
+  carregarTudo();
+  fecharModalConfig();
+});
+
+// ---------- Importação por notificação ----------
+document.getElementById('btn-copiar-url-notificacao').addEventListener('click', async (e) => {
+  if (!API_URL) { alert('Configure a URL do Apps Script primeiro, na aba Banco de Dados.'); return; }
+  const url = API_URL + '?action=importarDeTexto&texto=';
+  try {
+    await navigator.clipboard.writeText(url);
+  } catch (err) {
+    const area = document.createElement('textarea');
+    area.value = url;
+    document.body.appendChild(area);
+    area.select();
+    document.execCommand('copy');
+    document.body.removeChild(area);
+  }
+  const btn = e.currentTarget;
+  const textoOriginal = btn.textContent;
+  btn.textContent = 'Copiado!';
+  setTimeout(() => { btn.textContent = textoOriginal; }, 2000);
+});
+
+// ---------- Abas principais ----------
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('ativo'));
+    document.querySelectorAll('.aba').forEach(a => a.classList.remove('ativa'));
+    btn.classList.add('ativo');
+    document.getElementById('aba-' + btn.dataset.aba).classList.add('ativa');
+    const subtitulos = { transacoes:'Gestão financeira', resumo:'Gastos e receitas', lembretes:'Pagamentos e cobranças' };
+    document.getElementById('subtitulo').textContent = subtitulos[btn.dataset.aba];
+  });
+});
+
+// ---------- Carregamento geral ----------
+async function carregarTudo(){
+  const inicio = elInicio.value, fim = elFim.value;
+  const [resumoDados, transacoes, lembretes] = await Promise.all([
+    chamarAPI({ action: 'resumo', inicio, fim }),
+    chamarAPI({ action: 'listarTransacoes', inicio, fim }),
+    chamarAPI({ action: 'listarLembretes', inicio, fim })
+  ]);
+  renderCards(resumoDados);
+  renderResumoTab(resumoDados);
+  renderTransacoes(transacoes.transacoes || []);
+  renderLembretes(lembretes.lembretes || []);
+}
+
+function renderCards(r){
+  if (!r || !r.ok) return;
+  document.getElementById('card-receitas').textContent = formatarMoeda(r.receitas);
+  document.getElementById('card-gastos').textContent = formatarMoeda(r.gastos);
+  const elSaldo = document.getElementById('card-saldo');
+  elSaldo.textContent = (r.saldo >= 0 ? '+ ' : '- ') + formatarMoeda(Math.abs(r.saldo));
+  elSaldo.classList.toggle('pos', r.saldo >= 0);
+  elSaldo.classList.toggle('neg', r.saldo < 0);
+}
+
+// ---------- Transações ----------
+const formTransacao = document.getElementById('form-transacao');
+const corpoTransacoes = document.getElementById('corpo-transacoes');
+
+document.getElementById('btn-nova-transacao').addEventListener('click', () => formTransacao.classList.toggle('escondido'));
+document.getElementById('t-cancelar').addEventListener('click', () => formTransacao.classList.add('escondido'));
+document.getElementById('t-periodicidade').addEventListener('change', e => {
+  document.getElementById('t-recorrente-wrap').style.display = e.target.value === 'Fixa' ? 'block' : 'none';
+});
+
+formTransacao.addEventListener('submit', async e => {
+  e.preventDefault();
+  const tipo = document.getElementById('t-tipo').value;
+  const periodicidade = document.getElementById('t-periodicidade').value;
+  const categoriaTema = document.getElementById('t-categoria-tema').value;
+  const data = document.getElementById('t-data').value;
+  const descricao = document.getElementById('t-descricao').value.trim();
+  const valor = document.getElementById('t-valor').value;
+  const recorrente = periodicidade === 'Fixa' && document.getElementById('t-recorrente').checked;
+
+  await chamarAPI({ action: 'criarTransacao', dados: JSON.stringify({ tipo, periodicidade, categoriaTema, data, descricao, valor, origem: 'Manual' }) }, 'POST');
+  if (recorrente){
+    const dia = new Date(data + 'T00:00:00').getDate();
+    await chamarAPI({ action: 'criarFixo', dados: JSON.stringify({ tipo, descricao, valor, diaDoMes: dia, categoriaTema }) }, 'POST');
+  }
+  formTransacao.reset();
+  formTransacao.classList.add('escondido');
+  document.getElementById('t-recorrente-wrap').style.display = 'none';
+  document.getElementById('t-data').value = formatarISOLocal(new Date());
+  popularSelectCategoria();
+  carregarTudo();
+});
+
+function renderTransacoes(lista){
+  corpoTransacoes.innerHTML = '';
+  if (lista.length === 0){
+    corpoTransacoes.innerHTML = '<tr><td colspan="7" class="vazio">Nenhuma transação neste período.</td></tr>';
+    return;
+  }
+  lista.sort((a,b) => new Date(b.data) - new Date(a.data)).forEach(t => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="tick-cel"><span class="tick-bar ${t.tipo}"></span></td>
+      <td>${formatarDataBR(t.data)}</td>
+      <td>${t.descricao}</td>
+      <td><span class="tag-pilha">${t.categoriaTema ? `<span class="tag">${t.categoriaTema}</span>` : ''}<span class="tag">${t.periodicidade}</span></span></td>
+      <td><span class="tag">${t.origem}</span></td>
+      <td class="valor ${t.tipo}">${formatarMoeda(t.valor)}</td>
+      <td><button class="apagar-btn" data-id="${t.id}">✕</button></td>
+    `;
+    corpoTransacoes.appendChild(tr);
+  });
+  corpoTransacoes.querySelectorAll('.apagar-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('Apagar esta transação?')) return;
+      await chamarAPI({ action: 'apagarTransacao', id: btn.dataset.id }, 'POST');
+      carregarTudo();
+    });
+  });
+}
+
+// ---------- Importar CSV ----------
+document.getElementById('btn-importar').addEventListener('click', () => document.getElementById('arquivo-importar').click());
+document.getElementById('arquivo-importar').addEventListener('change', async e => {
+  const arquivo = e.target.files[0];
+  if (!arquivo) return;
+  const texto = await arquivo.text();
+  const linhas = texto.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  let importadas = 0, erros = 0;
+  for (const linha of linhas){
+    const partes = linha.split(/[,;]/).map(p => p.trim());
+    if (partes.length < 5) { erros++; continue; }
+    const [data, descricao, tipo, periodicidade, valor] = partes;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) { erros++; continue; }
+    await chamarAPI({ action: 'criarTransacao', dados: JSON.stringify({ data, descricao, tipo, periodicidade, valor, origem: 'Manual' }) }, 'POST');
+    importadas++;
+  }
+  alert(`Importação concluída: ${importadas} transações importadas` + (erros ? `, ${erros} linhas ignoradas (formato esperado: data YYYY-MM-DD,descrição,tipo,periodicidade,valor).` : '.'));
+  e.target.value = '';
+  carregarTudo();
+});
+
+// ---------- Resumo ----------
+function renderResumoTab(r){
+  const el = document.getElementById('conteudo-resumo');
+  if (!r || !r.ok || (r.receitas === 0 && r.gastos === 0)){
+    el.innerHTML = '<div class="vazio">Nenhuma transação encontrada neste período.</div>';
+    return;
+  }
+  const maiorPeriodicidade = Math.max(r.porPeriodicidade.Fixa, r.porPeriodicidade['Variável'], r.porPeriodicidade['Única'], 1);
+  const maiorGeral = Math.max(r.receitas, r.gastos, 1);
+  const categoriasOrdenadas = Object.entries(r.porCategoria || {}).sort((a,b) => b[1]-a[1]);
+  const maiorCategoria = Math.max(...categoriasOrdenadas.map(c => c[1]), 1);
+
+  let blocoCategoria = '';
+  if (categoriasOrdenadas.length){
+    blocoCategoria = `
+      <div class="resumo-bloco">
+        <div class="resumo-titulo">Gastos por categoria</div>
+        ${categoriasOrdenadas.map(([nome, valor]) => barraLinha(nome, valor, maiorCategoria)).join('')}
+      </div>`;
+  }
+
+  el.innerHTML = `
+    <div class="resumo-bloco">
+      <div class="resumo-titulo">Receitas x Gastos</div>
+      ${barraLinha('Receitas', r.receitas, maiorGeral)}
+      ${barraLinha('Gastos', r.gastos, maiorGeral)}
+    </div>
+    ${blocoCategoria}
+    <div class="resumo-bloco">
+      <div class="resumo-titulo">Gastos por periodicidade</div>
+      ${barraLinha('Fixa', r.porPeriodicidade.Fixa, maiorPeriodicidade)}
+      ${barraLinha('Variável', r.porPeriodicidade['Variável'], maiorPeriodicidade)}
+      ${barraLinha('Única', r.porPeriodicidade['Única'], maiorPeriodicidade)}
+    </div>
+  `;
+}
+function barraLinha(rotulo, valor, maior){
+  const pct = Math.min(100, Math.round((valor / maior) * 100));
+  return `
+    <div class="barra-linha">
+      <div class="barra-rotulo" title="${rotulo}">${rotulo}</div>
+      <div class="barra-fundo"><div class="barra-preenchida" style="width:${pct}%"></div></div>
+      <div class="barra-valor">${formatarMoeda(valor)}</div>
+    </div>
+  `;
+}
+
+// ---------- Lembretes ----------
+const formLembrete = document.getElementById('form-lembrete');
+const listaLembretes = document.getElementById('lista-lembretes');
+
+document.getElementById('btn-novo-lembrete').addEventListener('click', () => formLembrete.classList.toggle('escondido'));
+document.getElementById('le-cancelar').addEventListener('click', () => formLembrete.classList.add('escondido'));
+
+formLembrete.addEventListener('submit', async e => {
+  e.preventDefault();
+  const tipo = document.getElementById('le-tipo').value;
+  const vencimento = document.getElementById('le-vencimento').value;
+  const descricao = document.getElementById('le-descricao').value.trim();
+  const valor = document.getElementById('le-valor').value;
+  const recorrente = document.getElementById('le-recorrente').checked;
+
+  await chamarAPI({ action: 'criarLembrete', dados: JSON.stringify({ tipo, vencimento, descricao, valor, recorrente }) }, 'POST');
+  formLembrete.reset();
+  formLembrete.classList.add('escondido');
+  carregarTudo();
+});
+
+function renderLembretes(lista){
+  listaLembretes.innerHTML = '';
+  if (lista.length === 0){
+    listaLembretes.innerHTML = `<div class="vazio">Nenhum lembrete de pagamento ou cobrança cadastrado.<br>Adicione lembretes para controlar melhor seus pagamentos e cobranças recorrentes ou esporádicos, fixos ou variáveis.</div>`;
+    return;
+  }
+  lista.sort((a,b) => new Date(a.vencimento) - new Date(b.vencimento)).forEach(le => {
+    const div = document.createElement('div');
+    div.className = 'lembrete-item';
+    div.innerHTML = `
+      <div class="lembrete-info">
+        <span class="tick-bar ${le.tipo}" style="width:4px; height:28px; display:inline-block; border-radius:2px;"></span>
+        <div class="lembrete-meta">
+          <span class="desc">${le.descricao} ${le.recorrente ? '<span class="tag">mensal</span>' : ''}</span>
+          <span class="venc">vence ${formatarDataBR(le.vencimento)}</span>
+        </div>
+      </div>
+      <div class="lembrete-acoes">
+        <span class="valor ${le.tipo}" style="font-family:'JetBrains Mono', monospace;">${formatarMoeda(le.valor)}</span>
+        <button class="status-btn ${le.status}" data-id="${le.id}">${le.status}</button>
+        <button class="apagar-btn" data-id="${le.id}">✕</button>
+      </div>
+    `;
+    listaLembretes.appendChild(div);
+  });
+  listaLembretes.querySelectorAll('.status-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      await chamarAPI({ action: 'alternarStatusLembrete', id: btn.dataset.id }, 'POST');
+      carregarTudo();
+    });
+  });
+  listaLembretes.querySelectorAll('.apagar-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('Apagar este lembrete?')) return;
+      await chamarAPI({ action: 'apagarLembrete', id: btn.dataset.id }, 'POST');
+      carregarTudo();
+    });
+  });
+}
+
+elInicio.addEventListener('change', carregarTudo);
+elFim.addEventListener('change', carregarTudo);
+
+// ---------- Inicialização ----------
+async function aposConectarAPI(){
+  mostrarTela(elAppConectado);
+  const config = await chamarAPI({ action: 'obterConfiguracoes' });
+  if (config && config.ok) diaReferenciaAtual = config.diaReferencia || 1;
+  renderDiaReferencia();
+  calcularPeriodoPadrao();
+  await carregarCategorias();
+  carregarTudo();
+}
+
+// ── ATUALIZAÇÃO AUTOMÁTICA ──────────────────────────────────────
+// O GitHub Pages serve o HTML com cache, então sem isto o usuário fica
+// com uma versão antiga até limpar o navegador. Aqui buscamos o próprio
+// arquivo ignorando cache, comparamos a versão do <title> e recarregamos.
+//
+// Regras de segurança para nunca atrapalhar o usuário:
+//   • Não recarrega se ele estiver digitando (foco em input/textarea/select).
+//   • Não recarrega com modal aberto ou requisição em andamento.
+//   • Guarda a aba ativa e o período antes de recarregar, e restaura depois.
+const CHECAR_ATUALIZACAO_MS = 5 * 60 * 1000; // a cada 5 minutos
+const CHECAR_INTERVALO_MIN_MS = 20 * 1000;   // nunca 2 checagens em menos de 20s
+let ultimaChecagem = 0;
+
+function usuarioEstaOcupado(){
+  // Digitando?
+  const a = document.activeElement;
+  if (a){
+    const tag = (a.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || tag === 'select') return true;
+    if (a.isContentEditable) return true;
+  }
+  // Algum modal/overlay realmente VISÍVEL na tela?
+  // Verificamos o estilo calculado em vez de procurar uma classe específica:
+  // o app esconde elementos por display/visibility, não só por classe.
+  const candidatos = document.querySelectorAll(
+    '.modal, .modal-overlay, .loading-overlay, #loading-overlay'
+  );
+  for (const el of candidatos){
+    const cs = getComputedStyle(el);
+    if (cs.display !== 'none' && cs.visibility !== 'hidden' && parseFloat(cs.opacity) > 0.05){
+      // Confirma que ocupa área na tela (não é um resquício de 0x0).
+      const r = el.getBoundingClientRect();
+      if (r.width > 0 && r.height > 0) return true;
+    }
+  }
+  // Requisição em andamento?
+  if (window.__requisicoesEmAndamento > 0) return true;
+  return false;
+}
+
+function salvarEstadoParaRestaurar(){
+  try {
+    const abaAtiva = document.querySelector('.aba.ativa, .tab.ativa, [data-aba].ativa');
+    const estado = {
+      aba: abaAtiva ? (abaAtiva.dataset.aba || abaAtiva.id || null) : null,
+      inicio: (document.getElementById('inicio') || {}).value || null,
+      fim: (document.getElementById('fim') || {}).value || null,
+      scroll: window.scrollY || 0
+    };
+    sessionStorage.setItem('duc_estado_pre_reload', JSON.stringify(estado));
+  } catch(e){}
+}
+
+function restaurarEstadoAposReload(){
+  try {
+    const bruto = sessionStorage.getItem('duc_estado_pre_reload');
+    if (!bruto) return;
+    sessionStorage.removeItem('duc_estado_pre_reload');
+    const estado = JSON.parse(bruto);
+    if (estado.inicio && document.getElementById('inicio')) document.getElementById('inicio').value = estado.inicio;
+    if (estado.fim && document.getElementById('fim')) document.getElementById('fim').value = estado.fim;
+    if (estado.aba){
+      const alvo = document.querySelector('[data-aba="' + estado.aba + '"]') || document.getElementById(estado.aba);
+      if (alvo) alvo.click();
+    }
+    if (estado.scroll) setTimeout(() => window.scrollTo(0, estado.scroll), 120);
+  } catch(e){}
+}
+
+async function checarAtualizacao(){
+  // Evita rajada de requisições quando mostrarTela() é chamada várias vezes.
+  const agora = Date.now();
+  if (agora - ultimaChecagem < CHECAR_INTERVALO_MIN_MS) return;
+  ultimaChecagem = agora;
+  try {
+    const r = await fetch(location.pathname + '?_v=' + Date.now(), { cache: 'no-store' });
+    if (!r.ok) return;
+    const txt = await r.text();
+    const m = txt.match(/<title>[^<]*?(V[\d.]+)\s*<\/title>/);
+    const remota = m && m[1];
+    if (!remota || remota === APP_VERSAO) return;
+    // Existe versão nova. Espera o usuário ficar livre para recarregar.
+    const tentarRecarregar = () => {
+      if (usuarioEstaOcupado()){
+        setTimeout(tentarRecarregar, 4000); // tenta de novo em 4s
+        return;
+      }
+      salvarEstadoParaRestaurar();
+      location.reload();
+    };
+    tentarRecarregar();
+  } catch(e){ /* offline ou falha de rede: ignora */ }
+}
+
+// ── SPLASH: esconder ────────────────────────────────────────────
+// A tela de login aparece por cima do splash sincronizada com a
+// animação de entrada da logo (ver METADE_ENTRADA_LOGO_MS mais abaixo).
+const SPLASH_INICIO = Date.now();
+let splashJaSaiu = false;
+
+// Promessa que resolve quando a imagem da logo terminou de carregar.
+// Sem isso a splash pode sair antes da logo aparecer, causando um piscar
+// de tela vazia em conexões lentas.
+const splashLogoPronta = new Promise((resolver) => {
+  const img = document.querySelector('#splash img');
+  if (!img) { resolver(); return; }
+  if (img.complete && img.naturalWidth > 0) { resolver(); return; }
+  img.addEventListener('load', resolver, { once: true });
+  img.addEventListener('error', resolver, { once: true }); // não travar se falhar
+  setTimeout(resolver, 2500); // teto de espera
+});
+
+// A tela de login começa a aparecer na METADE do tempo da animação de
+// entrada da logo (delay .6s + metade de .75s = .975s = 975ms), dando a
+// impressão de que a revelação acontece "durante" o esmaecer da logo,
+// não depois dele. Só se aplica no modo de entrada direta (.com-fade);
+// no modo .sem-fade a logo já está totalmente visível desde o início.
+const METADE_ENTRADA_LOGO_MS = 975;
+
+async function esconderSplash(){
+  if (splashJaSaiu) return;
+  splashJaSaiu = true;
+  const el = document.getElementById('splash');
+  if (!el) return;
+  await splashLogoPronta;
+  const decorrido = Date.now() - SPLASH_INICIO;
+
+  const tempoRevelarLogin = el.classList.contains('sem-fade')
+    ? 0
+    : Math.max(0, METADE_ENTRADA_LOGO_MS - decorrido);
+  setTimeout(() => {
+    // O splash permanece na tela (não esmaece nem é removido) — a tela
+    // de login aparece por cima dele, com sua própria animação de
+    // entrada, dando a impressão de continuidade com a logo do splash.
+    document.getElementById('tela-entrada').classList.add('revelada');
+  }, tempoRevelarLogin);
+}
+
+/* Move a MESMA tag <img> da splash para dentro da tela de login (em vez
+   de deixar duas imagens separadas — uma esmaecendo, outra aparecendo
+   por baixo). Como é o mesmo elemento, não há "troca" de imagem: ela
+   continua sendo a mesma logo, só muda de tamanho/posição — e essa
+   mudança é animada via técnica FLIP (First-Last-Invert-Play). */
+function moverLogoParaLogin(splashEl){
+  try {
+    const img = splashEl.querySelector('img');
+    const destino = document.querySelector('#tela-entrada .logo-grande');
+    if (!img || !destino) return;
+
+    const antes = img.getBoundingClientRect();
+    destino.appendChild(img);
+    const depois = img.getBoundingClientRect();
+
+    const escalaX = antes.width / depois.width;
+    const escalaY = antes.height / depois.height;
+    const deltaX = antes.left + antes.width / 2 - (depois.left + depois.width / 2);
+    const deltaY = antes.top + antes.height / 2 - (depois.top + depois.height / 2);
+    img.style.transition = 'none';
+    img.style.transformOrigin = 'center center';
+    img.style.transform = `translate(${deltaX}px, ${deltaY}px) scale(${escalaX}, ${escalaY})`;
+
+    requestAnimationFrame(() => {
+      img.style.transition = 'transform .45s cubic-bezier(.2,.7,.3,1)';
+      img.style.transform = 'none';
+      img.addEventListener('transitionend', () => {
+        img.style.transition = '';
+        img.style.transformOrigin = '';
+      }, { once: true });
+    });
+  } catch(e) { /* pior caso: a logo aparece no login sem animação, mas aparece */ }
+}
+
+// Rede de segurança: se algo travar, a splash sai sozinha em 12s.
+setTimeout(esconderSplash, 12000);
+
+(async function iniciar(){
+ try {
+  // Badge de versão: lê do <title>, evitando número duplicado no HTML.
+  const elBadgeVersao = document.getElementById('badge-versao');
+  if (elBadgeVersao) elBadgeVersao.textContent = APP_VERSAO;
+
+  document.getElementById('t-data').value = formatarISOLocal(new Date());
+  document.getElementById('le-vencimento').value = formatarISOLocal(new Date());
+  renderDiaReferencia();
+  calcularPeriodoPadrao();
+
+  // ── Retorno após o redirecionamento de autorização (mesma aba) ──
+  // Não chama aguardarConexaoEFinalizar aqui: aquela função redireciona de
+  // novo se o teste falhar, o que causaria loop. Aqui testamos com várias
+  // tentativas (o Apps Script demora na 1ª chamada) e só então decidimos.
+  const authPendente = localStorage.getItem('duc_financas_auth_pendente');
+  if (authPendente){
+    localStorage.removeItem('duc_financas_auth_pendente');
+    mostrarTela(elTelaEntrada);
+    const pendente = obterProvisionamentoPendente();
+    if (pendente && pendente.urlExec){
+      const url = pendente.urlExec;
+      atualizarStatusEntrada('info', '6/6 — Finalizando a conexão (pode levar até 1 minuto na primeira vez)...');
+      let teste = null;
+      for (let tentativa = 0; tentativa < 8 && !(teste && teste.ok); tentativa++){
+        teste = await fetch(url + '?action=obterConfiguracoes').then(r => r.json()).catch(() => null);
+        if (teste && teste.ok) break;
+        await new Promise(r => setTimeout(r, 5000));
+      }
+      if (teste && teste.ok){
+        API_URL = url;
+        localStorage.setItem('duc_financas_api_url', url);
+        limparProvisionamentoPendente();
+        mostrarSucessoComUrl(url, elStatusEntrada);
+        await aposConectarAPI();
+      } else {
+        // Não redireciona automaticamente de novo — evita loop.
+        // Oferece o botão para o usuário tentar de novo por gesto próprio.
+        mostrarAvisoComUrl(url, elStatusEntrada);
+      }
+    }
+    return;
+  }
+
+  if (!API_URL){
+    mostrarTela(elTelaEntrada);
+    return;
+  }
+  await aposConectarAPI();
+ } finally {
+   // Sempre esconde a splash, mesmo se algo acima falhar ou retornar cedo.
+   esconderSplash();
+   // Restaura aba/período/scroll se acabamos de recarregar por atualização.
+   restaurarEstadoAposReload();
+   // Liga a verificação periódica de versão nova (silenciosa).
+   setTimeout(checarAtualizacao, 8000);
+   setInterval(checarAtualizacao, CHECAR_ATUALIZACAO_MS);
+ }
+})();
+</script>
+</body>
+</html>
