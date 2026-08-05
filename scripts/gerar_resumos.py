@@ -134,6 +134,7 @@ def _chamar_ia(prompt):
         headers={
             "Content-Type": "application/json",
             "Authorization": f"Bearer {API_KEY}",
+            "User-Agent": "FinancasDuC-Action/1.0",
         },
         method="POST",
     )
