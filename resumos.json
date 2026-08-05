@@ -2,6 +2,10 @@
   "10": "Agora o app testa a conexão após configuração automática",
   "11": "Agora o app reutiliza o que já existe em vez de criar tudo de novo novamente",
   "12": "O app agora verifica se o banco de dados já existe antes de criar um novo",
+  "41": {
+    "resumo": "Ajustes e correções, resumo ainda não gerado.",
+    "nota": "Não entra direto "
+  },
   "01": "o app Finanças DuC ajuda a lidar com o seu dinheiro de forma mais fácil",
   "02": {
     "resumo": "Agora importa transações de notificações do banco",
