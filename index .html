@@ -561,8 +561,19 @@ btnApagarTudo.addEventListener("click", async () => {
   if (processandoExclusao) return;
 
   if (!tokenPronto) {
-    // plano B: 5 cliques seguidos com o botão desabilitado força um login manual
     cliquesDesabilitado++;
+
+    // 2 cliques seguidos: limpa só dados locais (cache, token do GitHub,
+    // versões visitadas) - nada de Drive, sem confirm, já que não é
+    // destrutivo remotamente.
+    if (cliquesDesabilitado === 2) {
+      localStorage.clear();
+      sessionStorage.clear();
+      location.reload();
+      return;
+    }
+
+    // plano B: 5 cliques seguidos com o botão desabilitado força um login manual
     if (cliquesDesabilitado >= 5 && tokenClientApagar) {
       cliquesDesabilitado = 0;
       tokenClientApagar.requestAccessToken({ prompt: "consent" });
