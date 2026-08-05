@@ -1,14 +1,17 @@
 {
+  "10": "Agora o app testa a conexão após configuração automática",
+  "11": "Agora o app reutiliza o que já existe em vez de criar tudo de novo novamente",
+  "12": "O app agora verifica se o banco de dados já existe antes de criar um novo",
   "01": "o app Finanças DuC ajuda a lidar com o seu dinheiro de forma mais fácil",
-  "02": "Agora importa transações de notificações do banco",
+  "02": {
+    "resumo": "Agora importa transações de notificações do banco",
+    "nota": "v,jh\nkih"
+  },
   "03": "Agora você vê uma mensagem de sucesso com uma url quando conecta sua planilha",
   "04": "Ajustes internos, sem mudança perceptível",
   "05": "Sem mudança perceptível.",
   "06": "Ajustes internos, sem mudança perceptível",
   "07": "o app agora mostra aviso se a conexão demorar e você pode tentar de novo",
   "08": "Agora o app lembra suas configurações ao entrar com sua conta do Google",
-  "09": "Agora ele continua onde parou se algo der errado ou você fechar o app",
-  "10": "Agora o app testa a conexão após configuração automática",
-  "11": "Agora o app reutiliza o que já existe em vez de criar tudo de novo novamente",
-  "12": "O app agora verifica se o banco de dados já existe antes de criar um novo"
+  "09": "Agora ele continua onde parou se algo der errado ou você fechar o app"
 }
