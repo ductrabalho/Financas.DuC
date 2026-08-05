@@ -1,0 +1,37 @@
+name: Gerar resumos das versões
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "index-V*.html"
+
+permissions:
+  contents: write
+
+jobs:
+  resumir:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Gerar resumos.json
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          pip install pillow
+          python scripts/gerar_resumos.py
+
+      - name: Commitar resumos.json (se mudou)
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add resumos.json
+          git diff --cached --quiet || git commit -m "Atualiza resumos.json [skip ci]"
+          git push

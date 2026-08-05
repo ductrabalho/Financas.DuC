@@ -91,11 +91,31 @@ function estaVisitadoRecente(nome) {
   return horasPassadas < VISITADO_HORAS;
 }
 
+// Resumos gerados automaticamente pelo script gerar_resumos.py
+// (roda sozinho via GitHub Action a cada push). Se o arquivo não
+// existir ainda ou uma versão não tiver entrada, cai no texto padrão.
+async function carregarResumos() {
+  try {
+    const resp = await fetch("resumos.json", { cache: "no-store" });
+    if (!resp.ok) return {};
+    return await resp.json();
+  } catch (e) {
+    return {};
+  }
+}
+
+function resumoDaVersao(resumos, numero) {
+  return resumos[numero] || "Ajustes e correções, resumo ainda não gerado.";
+}
+
 async function carregar() {
   const status = document.getElementById("status");
   const grade = document.getElementById("grade");
   try {
-    const resp = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/contents/?ref=${BRANCH}`);
+    const [resp, resumos] = await Promise.all([
+      fetch(`https://api.github.com/repos/${OWNER}/${REPO}/contents/?ref=${BRANCH}`),
+      carregarResumos(),
+    ]);
     if (!resp.ok) throw new Error("Falha ao consultar repositório (" + resp.status + ")");
     const arquivos = await resp.json();
 
@@ -129,6 +149,7 @@ async function carregar() {
       link.href = v.nome;
       link.target = "_blank";
       link.textContent = "Finanças.DuC V" + v.numero;
+      link.title = resumoDaVersao(resumos, v.numero);
       link.addEventListener("click", () => marcarVisitado(v.nome));
       grade.appendChild(link);
     }
