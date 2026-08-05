@@ -1,7 +1,7 @@
 <!--
 ================================================================================
   Finanças.DuC — index.html
-  Versão atual: V00.042  (ver <title> na linha 6)
+  Versão atual: V00.043  (ver <title> na linha 6)
 
   🔗 LINK DO APP (GitHub Pages):
       https://ductrabalho.github.io/Financas.DuC/
@@ -19,11 +19,11 @@
   ──────────────────────────────────────────────────────────────────────────────
   [HTML / ESTRUTURA]
 
-  L.1–9      │ Cabeçalho do documento
+  L.1–166    │ Cabeçalho do documento
               │   DOCTYPE, <html>, <head>, <meta>, links de fontes (Google
               │   Fonts) e tag <script> do Google Identity Services (GSI)
 
-  L.10–600   │ ESTILOS CSS  ─────────────────── bloco <style> ───────────────
+  L.180–765  │ ESTILOS CSS  ─────────────────── bloco <style> ───────────────
               │   :root       – variáveis de cor e tipografia
               │   body/.wrap  – layout geral
               │   header/h1   – cabeçalho, logo, versão, subtítulo
@@ -47,16 +47,19 @@
               │   .resumo-* / .barra-*
               │               – gráfico de barras do Resumo
               │   .lembrete-* – itens da lista de Lembretes
+              │   #splash     – tela de carregamento (logo única, fica
+              │                 permanentemente na tela; ver JS mais abaixo)
               │   #tela-entrada / .bg-orb / .logo-grande / .login-*
-              │               – tela de login / provisionamento
+              │               – tela de login / provisionamento (cascata de
+              │                 fade-in escalonada: subtítulo → tag → card →
+              │                 conteúdo do card)
               │   .tela-sec   – telas secundárias (centralização vertical)
 
-  L.602–609  │ OVERLAY DE CARREGAMENTO (HTML)
-              │   Div fixa com spinner, texto e botão "Cancelar"
+  L.766–862  │ OVERLAY DE CARREGAMENTO + TELA DE ENTRADA (HTML)
 
-  L.610–920  │ BLOCO PRINCIPAL  ──────── div.wrap ──────────────────────────
+  L.879–1225 │ BLOCO PRINCIPAL  ──────── div.wrap ──────────────────────────
               │
-              │   L.613–704   MODAL DE CONFIGURAÇÕES
+              │   MODAL DE CONFIGURAÇÕES
               │               • Aba "Banco de Dados":
               │                   – Config automática via Google (btn-config-auto)
               │                   – Config manual (bloco-manual, URL do Apps Script)
@@ -71,32 +74,33 @@
               │                   – Botão copiar URL de importação
               │                   – Instruções passo a passo
               │
-              │   L.706–920   TELAS / PÁGINAS
+              │   TELAS / PÁGINAS
               │               • #tela-entrada  – tela de login/provisioning
-              │                   (logo, botão Google, opção manual,
-              │                    tela de loading/passos do login)
-              │               • (restante do wrap: app-conectado — header +
-              │                  cards + abas é renderizado dinamicamente
-              │                  via JS, o HTML estático está nesse bloco)
+              │                   (logo-grande vazia — a logo real vive em
+              │                    #splash e nunca é movida para aqui —,
+              │                    botão Google, opção manual, tela de
+              │                    loading/passos do login)
+              │               • #app-conectado – header (logo pequena,
+              │                   populada via FLIP quando o usuário entra)
+              │                  + cards + abas, renderizado via JS
 
   ──────────────────────────────────────────────────────────────────────────────
-  [JAVASCRIPT]  ──────────── bloco <script>  L.923–2595 ─────────────────────
+  [JAVASCRIPT]  ──────────── dois blocos <script>: L.863–879 e L.1229–3126 ────
 
-  L.924–949  │ CONFIGURAÇÃO GLOBAL
+  L.1231–1271│ CONFIGURAÇÃO GLOBAL + REFERÊNCIAS DOM BÁSICAS
               │   API_URL, diaReferenciaAtual, categoriasCache
-              │   GOOGLE_CLIENT_ID, GOOGLE_SCOPES
+              │   GOOGLE_CLIENT_ID, GOOGLE_SCOPES, APP_VERSAO
               │   diasReferenciaPredefinidos
 
-  L.951–982  │ REFERÊNCIAS DOM + FUNÇÕES UTILITÁRIAS BÁSICAS
-              │   elInicio, elFim, modalConfig, inputConfigUrl
+  L.1273–1301│ FUNÇÕES UTILITÁRIAS BÁSICAS
               │   formatarISOLocal(), calcularPeriodoPadrao()
               │   formatarMoeda(), formatarDataBR()
 
-  L.984–1042 │ OVERLAY DE CARREGAMENTO + chamarAPI()
+  L.1302–1363│ OVERLAY DE CARREGAMENTO + chamarAPI()
               │   bloquearTeclas(), mostrarLoading(), esconderLoading()
               │   chamarAPI() — wrapper de fetch com suporte a loading/abort
 
-  L.1043–1552│ CÓDIGO DO BACKEND  (string CODE_GS — conteúdo do Code.gs)
+  L.1364–1915│ CÓDIGO DO BACKEND  (string CODE_GS — conteúdo do Code.gs)
               │   ⚠️  NÃO EDITAR esta seção sem necessidade — é uma string
               │       literal copiada para o Apps Script do usuário.
               │   • Variáveis de nome das abas da planilha
@@ -109,7 +113,7 @@
               │     Configurações, Importação por notificação,
               │     Geração automática mensal
 
-  L.1554–1936│ CONFIGURAÇÃO AUTOMÁTICA VIA GOOGLE (OAuth / provisioning)
+  L.1916–2223│ CONFIGURAÇÃO AUTOMÁTICA VIA GOOGLE (OAuth / provisioning)
               │   inicializarGoogleAuth(), obterToken()
               │   buscarPlanilhaExistente(), buscarScriptVinculado(),
               │   buscarDeployAtivo(), criarSpreadsheet(), criarScript(),
@@ -117,50 +121,56 @@
               │   atualizarStatusEntrada(), salvarProvisionamentoPendente(),
               │   obterProvisionamentoPendente()
 
-  L.1937–2025│ TELA INICIAL — ENTRAR / CRIAR CONTA
-              │   mostrarTela(), renderDiaReferencia()
-              │   Lógica da tela de entrada: botão Google, URL manual,
-              │   salvarURL(), botão de entrar
+  L.2224–2302│ TELA INICIAL — ENTRAR / CRIAR CONTA
+              │   mostrarTela() — também dispara moverLogoParaHeader() quando
+              │   a transição é da tela de login direto para o app conectado
+              │   moverLogoParaHeader() — anima (técnica FLIP) a MESMA <img>
+              │   da logo do #splash até o tamanho/posição do header, sem
+              │   nunca duplicar o elemento
 
-  L.2026–2151│ MESCLAGEM DE PLANILHAS DO BANCO DE DADOS
+  L.2303–2325│ TELA INICIAL — utilitários de status
+
+  L.2326–2378│ LOGIN UNIFICADO
+              │   tratarLoginUnificado() — entrar/criar conta fazem a mesma
+              │   coisa: login + busca no Drive; sem planilhas, cria direto
+
+  L.2379–2504│ MESCLAGEM DE PLANILHAS DO BANCO DE DADOS
               │   buscarPlanilhasFinancasDuC(), funções de merge de dados
 
-  L.2152–2168│ MODAL DE CONFIGURAÇÕES — listeners de abertura/fechamento
+  L.2505–2521│ MODAL DE CONFIGURAÇÕES — listeners de abertura/fechamento
 
-  L.2169–2225│ HEADER NOVO (menu +, logout, dropdown)
-              │   Lógica do botão "+" (abrir dropdown: Despesa / Receita)
-              │   Lógica do botão de logout
+  L.2522–2578│ HEADER (menu +, logout, dropdown)
 
-  L.2226–2282│ CATEGORIAS — renderização e gestão
-              │   carregarCategorias(), renderCategorias()
-              │   Listeners dos botões "Adicionar" e remoção de chips
+  L.2579–2635│ CATEGORIAS — renderização e gestão
 
-  L.2283–2311│ DIA DE REFERÊNCIA — grade de opções
-              │   renderDiaReferencia(), salvarDiaReferencia()
+  L.2636–2696│ DIA DE REFERÊNCIA — grade de opções
 
-  L.2312–2331│ IMPORTAÇÃO POR NOTIFICAÇÃO — botão "Copiar URL"
-
-  L.2332–2343│ ABAS PRINCIPAIS — lógica de troca de aba
-
-  L.2344–2367│ CARREGAMENTO GERAL
+  L.2697–2752│ CARREGAMENTO GERAL + CARDS
               │   carregarTudo() — chama todas as funções de render
-              │   carregarCategorias()
 
-  L.2368–2428│ TRANSAÇÕES
+  L.2753–2802│ TRANSAÇÕES
               │   renderTransacoes(lista) — monta tabela, botão apagar
 
-  L.2429–2449│ IMPORTAR CSV
-              │   Listener do input file, parse e envio linha a linha
-
-  L.2450–2496│ RESUMO
+  L.2803–2849│ RESUMO
               │   renderResumoTab(r), barraLinha()
 
-  L.2497–2560│ LEMBRETES
+  L.2850–2913│ LEMBRETES
               │   formLembrete, renderLembretes(lista)
-              │   Listeners: novo lembrete, cancelar, submit, alternar status
 
-  L.2561–2595│ INICIALIZAÇÃO
+  L.2914–2932│ INICIALIZAÇÃO PÓS-CONEXÃO
               │   aposConectarAPI() — fluxo pós-conexão bem-sucedida
+
+  L.2933–3020│ ATUALIZAÇÃO AUTOMÁTICA
+              │   checarAtualizacao() — busca versão nova e recarrega quando
+              │   o usuário está livre (não digitando, sem modal aberto)
+
+  L.3021–3126│ SPLASH — fluxo de saída e entrada na tela de login
+              │   INICIO_CASCATA_MS — a cascata de fade-in (subtítulo → tag
+              │   → card → conteúdo) é disparada no exato instante em que a
+              │   logo começa a esmaecer para dentro, em passos iguais de
+              │   .15s entre si
+              │   esconderSplash() — dispara a cascata; a splash em si NUNCA
+              │   é removida da tela
               │   IIFE iniciar() — ponto de entrada da aplicação
   ──────────────────────────────────────────────────────────────────────────────
 -->
@@ -169,7 +179,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Finanças.DuC V00.042</title>
+<title>Finanças.DuC V00.043</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://accounts.google.com/gsi/client" async defer onload="inicializarGoogleAuth()"></script>
@@ -621,20 +631,15 @@
   #tela-entrada .logo-grande{
     text-align: center;
     line-height: 1;
-    /* Reserva o mesmo espaço que a logo ocupava quando estava aqui,
+    /* Reserva o mesmo espaço que a logo ocupava quando ainda vivia aqui,
        usando a proporção real da imagem (760×149px ≈ 5.1:1), mais uma
        margem extra ajustada visualmente pelo usuário, para que o
        restante da tela (subtítulo, tag, card) fique na posição exata
-       que ele aprovou. */
+       que ele aprovou. Fica sempre vazia: a logo real vive em #splash
+       e nunca é movida para dentro dela. */
     width: min(340px, 90%);
     aspect-ratio: 5.1 / 1;
     margin: 0 auto 82px;
-  }
-  #tela-entrada .logo-grande img{
-    max-width: 340px;
-    width: 90%;
-    display: block;
-    margin: 0 auto;
   }
   #tela-entrada .logo-subtitulo,
   #tela-entrada .logo-tag,
@@ -787,7 +792,7 @@
     padding-top: 20vh;
     gap: 26px;
   }
-  #splash img, #tela-entrada .logo-grande img{
+  #splash img{
     max-width: 340px;
     width: 90%;
     height: auto;
@@ -1964,16 +1969,16 @@ function solicitarLogin(callback){
   tokenClient.requestAccessToken();
 }
 
-function atualizarStatusElemento(el, tipo, texto){ // ALTERADO
+function atualizarStatusElemento(el, tipo, texto){
   el.classList.remove('oculto');
   el.className = 'status-auto status-' + tipo;
   el.textContent = texto;
 }
 function atualizarStatusAuto(tipo, texto){
-  atualizarStatusElemento(elStatusAuto, tipo, texto); // ALTERADO
+  atualizarStatusElemento(elStatusAuto, tipo, texto);
 }
 
-function mostrarSucessoComUrl(url, el = elStatusAuto){ // ALTERADO
+function mostrarSucessoComUrl(url, el = elStatusAuto){
   el.classList.remove('oculto');
   el.className = 'status-auto status-sucesso';
   el.innerHTML = `
@@ -1996,7 +2001,7 @@ function mostrarSucessoComUrl(url, el = elStatusAuto){ // ALTERADO
   });
 }
 
-async function mostrarAvisoComUrl(url, el = elStatusAuto){ // ALTERADO
+async function mostrarAvisoComUrl(url, el = elStatusAuto){
   atualizarStatusElemento(el, 'info', '5/6 — Verificando autorização...');
   const teste = await fetch(url + '?action=obterConfiguracoes').then(r => r.json()).catch(() => null);
   if (teste && teste.ok){
@@ -2008,7 +2013,7 @@ async function mostrarAvisoComUrl(url, el = elStatusAuto){ // ALTERADO
   } else {
     el.classList.remove('oculto');
     el.className = 'status-auto status-aviso';
-    el.innerHTML = `\u26a0\ufe0f Autoriza\u00e7\u00e3o necess\u00e1ria. Clique abaixo para abrir a p\u00e1gina do Google, aceite TODOS os acessos pedidos \u2014 voc\u00ea volta pra c\u00e1 automaticamente.<br><div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;"><button type="button" id="btn-abrir-autorizacao-manual">Abrir autoriza\u00e7\u00e3o</button></div>`; // ALTERADO
+    el.innerHTML = `\u26a0\ufe0f Autoriza\u00e7\u00e3o necess\u00e1ria. Clique abaixo para abrir a p\u00e1gina do Google, aceite TODOS os acessos pedidos \u2014 voc\u00ea volta pra c\u00e1 automaticamente.<br><div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;"><button type="button" id="btn-abrir-autorizacao-manual">Abrir autoriza\u00e7\u00e3o</button></div>`;
     document.getElementById('btn-abrir-autorizacao-manual').addEventListener('click', () => {
       // Mesma aba: evita popup bloqueado e abas órfãs no mobile.
       localStorage.setItem('duc_financas_auth_pendente', '1');
@@ -2017,69 +2022,7 @@ async function mostrarAvisoComUrl(url, el = elStatusAuto){ // ALTERADO
   }
 }
 
-// Fica testando a conexão em segundo plano enquanto o usuário resolve a
-// autorização na outra aba. Quando a aba volta a ficar visível (ou a cada
-// poucos segundos) testa de novo; ao dar certo, segue pro passo 6 sozinho.
-// ⚠️ OBSOLETA desde V00.033 — era usada no fluxo de popup/aba nova.
-// Mantida apenas por segurança; o fluxo atual usa aba única (location.href).
-function aguardarAutorizacaoEmSegundoPlano(url, el = elStatusAuto){
-  if (window.__aguardandoAutorizacaoDuC) return; // já tem um monitor rodando
-  window.__aguardandoAutorizacaoDuC = true;
-
-  const btnContinuar = document.getElementById('btn-continuar-aviso');
-  const btnTentar = document.getElementById('btn-tentar-novo-aviso');
-  if (btnContinuar) btnContinuar.disabled = true;
-  if (btnTentar) btnTentar.disabled = true;
-  if (btnTentar) btnTentar.textContent = 'Aguardando você concluir na outra aba...';
-
-  let parar = false;
-  const limpar = () => {
-    parar = true;
-    window.__aguardandoAutorizacaoDuC = false;
-    document.removeEventListener('visibilitychange', aoVoltarVisivel);
-  };
-
-  const testarAgora = async () => {
-    if (parar) return false;
-    const teste = await fetch(url + '?action=obterConfiguracoes').then(r => r.json()).catch(() => null);
-    if (teste && teste.ok){
-      limpar();
-      // Fechar a aba de autorização automaticamente (técnica cross-browser)
-      try {
-        // Abre about:blank no mesmo nome e fecha – funciona mesmo no mobile
-        const fechar = window.open('about:blank', 'ducAuth');
-        if (fechar) fechar.close();
-      } catch(e) {}
-      try {
-        if (window.__abaAutorizacaoDuC && !window.__abaAutorizacaoDuC.closed)
-          window.__abaAutorizacaoDuC.close();
-      } catch(e) {}
-      window.__abaAutorizacaoDuC = null;
-      API_URL = url;
-      localStorage.setItem('duc_financas_api_url', url);
-      limparProvisionamentoPendente();
-      mostrarSucessoComUrl(url, el); // ALTERADO
-      await aposConectarAPI();
-      return true;
-    }
-    return false;
-  };
-
-  const aoVoltarVisivel = () => {
-    if (document.visibilityState === 'visible') testarAgora();
-  };
-  document.addEventListener('visibilitychange', aoVoltarVisivel);
-
-  (async () => {
-    while (!parar){
-      await new Promise(r => setTimeout(r, 4000));
-      const ok = await testarAgora();
-      if (ok) break;
-    }
-  })();
-}
-
-async function aguardarConexaoEFinalizar(url, statusFn = atualizarStatusAuto, el = elStatusAuto){ // ALTERADO
+async function aguardarConexaoEFinalizar(url, statusFn = atualizarStatusAuto, el = elStatusAuto){
   // ── Etapa 5: abrir a página de autorização do Google e esperar o aceite ──
   // ── Primeiro testa: se já está autorizado, nem precisa redirecionar ──
   const testePrevio = await fetch(url + '?action=obterConfiguracoes').then(r => r.json()).catch(() => null);
@@ -2181,7 +2124,7 @@ async function buscarDeployAtivo(scriptId){
   return null;
 }
 
-async function rodarProvisionamento(spreadsheetIdExistente, statusFn = atualizarStatusAuto, el = elStatusAuto){ // ALTERADO
+async function rodarProvisionamento(spreadsheetIdExistente, statusFn = atualizarStatusAuto, el = elStatusAuto){
   try {
     let pendente = obterProvisionamentoPendente() || {};
     if (spreadsheetIdExistente && pendente.spreadsheetId !== spreadsheetIdExistente){
@@ -2190,22 +2133,22 @@ async function rodarProvisionamento(spreadsheetIdExistente, statusFn = atualizar
     }
 
     // ── Etapa 0: validar via API se o que está salvo ainda existe ──
-    statusFn('info', '1/6 — Verificando se já existe um banco de dados configurado...'); // ALTERADO
+    statusFn('info', '1/6 — Verificando se já existe um banco de dados configurado...');
     if (pendente.spreadsheetId){
       const ainda = await validarPlanilhaExistente(pendente.spreadsheetId);
       if (!ainda){
         // ID salvo não existe mais (deletado) — recomeça do zero
         pendente = {};
         limparProvisionamentoPendente();
-        statusFn('info', '1/6 — Banco anterior não encontrado. Criando novo...'); // ALTERADO
+        statusFn('info', '1/6 — Banco anterior não encontrado. Criando novo...');
       } else {
-        statusFn('info', '1/6 — Banco de dados já existente encontrado — reutilizando.'); // ALTERADO
+        statusFn('info', '1/6 — Banco de dados já existente encontrado — reutilizando.');
       }
     }
 
     // ── Etapa 1: criar planilha só se não existe ──
     if (!pendente.spreadsheetId){
-      statusFn('info', '2/6 — Criando sua planilha no Google Sheets...'); // ALTERADO
+      statusFn('info', '2/6 — Criando sua planilha no Google Sheets...');
       const planilha = await chamarGoogleAPI('https://sheets.googleapis.com/v4/spreadsheets', {
         method: 'POST',
         body: { properties: { title: NOME_PLANILHA } }
@@ -2213,13 +2156,13 @@ async function rodarProvisionamento(spreadsheetIdExistente, statusFn = atualizar
       pendente.spreadsheetId = planilha.spreadsheetId;
       salvarProvisionamentoPendente(pendente);
     } else {
-      statusFn('info', '2/6 — Planilha já existente, reutilizando...'); // ALTERADO
+      statusFn('info', '2/6 — Planilha já existente, reutilizando...');
     }
     const spreadsheetId = pendente.spreadsheetId;
 
     // ── Etapa 2: criar script só se não existe ──
     if (!pendente.scriptId){
-      statusFn('info', '3/6 — Criando o script vinculado à planilha...'); // ALTERADO
+      statusFn('info', '3/6 — Criando o script vinculado à planilha...');
       const projeto = await chamarGoogleAPI('https://script.googleapis.com/v1/projects', {
         method: 'POST',
         body: { title: NOME_PLANILHA, parentId: spreadsheetId }
@@ -2227,7 +2170,7 @@ async function rodarProvisionamento(spreadsheetIdExistente, statusFn = atualizar
       pendente.scriptId = projeto.scriptId;
       salvarProvisionamentoPendente(pendente);
     } else {
-      statusFn('info', '3/6 — Script já existente, reutilizando...'); // ALTERADO
+      statusFn('info', '3/6 — Script já existente, reutilizando...');
     }
     const scriptId = pendente.scriptId;
 
@@ -2242,7 +2185,7 @@ async function rodarProvisionamento(spreadsheetIdExistente, statusFn = atualizar
 
     // ── Etapa 3: deploy só se não existe ──
     if (!pendente.urlExec){
-      statusFn('info', '4/6 — Enviando o código e publicando como app da web...'); // ALTERADO
+      statusFn('info', '4/6 — Enviando o código e publicando como app da web...');
       const codigoComId = CODE_GS.replace("var SPREADSHEET_ID = '';", "var SPREADSHEET_ID = '" + spreadsheetId + "';");
       const manifest = {
         timeZone: 'America/Sao_Paulo',
@@ -2275,13 +2218,13 @@ async function rodarProvisionamento(spreadsheetIdExistente, statusFn = atualizar
       pendente.urlExec = urlExec;
       salvarProvisionamentoPendente(pendente);
     } else {
-      statusFn('info', '4/6 — Deploy já existente, reutilizando...'); // ALTERADO
+      statusFn('info', '4/6 — Deploy já existente, reutilizando...');
     }
 
     inputConfigUrl.value = pendente.urlExec;
-    await aguardarConexaoEFinalizar(pendente.urlExec, statusFn, el); // ALTERADO
+    await aguardarConexaoEFinalizar(pendente.urlExec, statusFn, el);
   } catch (err) {
-    statusFn('erro', '❌ Algo deu errado: ' + err.message + '. Você pode tentar de novo ou usar a configuração manual abaixo.'); // ALTERADO
+    statusFn('erro', '❌ Algo deu errado: ' + err.message + '. Você pode tentar de novo ou usar a configuração manual abaixo.');
   } finally {
     elBtnAuto.disabled = false;
   }
@@ -2368,7 +2311,7 @@ function moverLogoParaHeader(){
 }
 
 function atualizarStatusEntrada(tipo, texto){
-  atualizarStatusElemento(elStatusEntrada, tipo, texto); // ALTERADO
+  atualizarStatusElemento(elStatusEntrada, tipo, texto);
 }
 
 async function buscarPlanilhasFinancasDuC(){
@@ -2381,11 +2324,11 @@ async function buscarPlanilhasFinancasDuC(){
   return r.files || [];
 }
 
-async function conectarNaPlanilha(spreadsheetId, statusFn = atualizarStatusAuto, el = elStatusAuto){ // ALTERADO
-  await rodarProvisionamento(spreadsheetId, statusFn, el); // ALTERADO
+async function conectarNaPlanilha(spreadsheetId, statusFn = atualizarStatusAuto, el = elStatusAuto){
+  await rodarProvisionamento(spreadsheetId, statusFn, el);
 }
 
-// ALTERADO: tratarLoginEntrar e tratarLoginCriarConta foram unificados em
+// tratarLoginEntrar e tratarLoginCriarConta foram unificados em
 // tratarLoginUnificado, seguindo fluxo_login_.png — os dois botões agora
 // fazem exatamente a mesma coisa (login + busca no Drive), e quando 0
 // planilhas são encontradas a criação roda direto (igual à v00.015),
@@ -2434,7 +2377,7 @@ document.getElementById('btn-entrar-google').addEventListener('click', () => {
 document.getElementById('btn-nao-encontrada-criar').addEventListener('click', async () => {
   mostrarTela(elTelaEntrada);
   atualizarStatusEntrada('info', 'Criando sua conta...');
-  try { await rodarProvisionamento(undefined, atualizarStatusEntrada, elStatusEntrada); } // ALTERADO
+  try { await rodarProvisionamento(undefined, atualizarStatusEntrada, elStatusEntrada); }
   catch (err) { atualizarStatusEntrada('erro', '❌ Algo deu errado: ' + err.message); }
 });
 document.getElementById('btn-nao-encontrada-voltar').addEventListener('click', () => {
@@ -2518,7 +2461,7 @@ document.getElementById('btn-mesclagem-confirmar').addEventListener('click', asy
   try {
     if (idsSelecionados.length === 1){
       atualizarStatusMesclagem('info', 'Conectando na planilha selecionada...');
-      await conectarNaPlanilha(idsSelecionados[0], atualizarStatusMesclagem, document.getElementById('status-mesclagem')); // ALTERADO
+      await conectarNaPlanilha(idsSelecionados[0], atualizarStatusMesclagem, document.getElementById('status-mesclagem'));
       return;
     }
     atualizarStatusMesclagem('info', 'Lendo os dados das planilhas selecionadas...');
@@ -3126,40 +3069,6 @@ async function esconderSplash(){
     // entrada, dando a impressão de continuidade com a logo do splash.
     document.getElementById('tela-entrada').classList.add('revelada');
   }, tempoRevelarLogin);
-}
-
-/* Move a MESMA tag <img> da splash para dentro da tela de login (em vez
-   de deixar duas imagens separadas — uma esmaecendo, outra aparecendo
-   por baixo). Como é o mesmo elemento, não há "troca" de imagem: ela
-   continua sendo a mesma logo, só muda de tamanho/posição — e essa
-   mudança é animada via técnica FLIP (First-Last-Invert-Play). */
-function moverLogoParaLogin(splashEl){
-  try {
-    const img = splashEl.querySelector('img');
-    const destino = document.querySelector('#tela-entrada .logo-grande');
-    if (!img || !destino) return;
-
-    const antes = img.getBoundingClientRect();
-    destino.appendChild(img);
-    const depois = img.getBoundingClientRect();
-
-    const escalaX = antes.width / depois.width;
-    const escalaY = antes.height / depois.height;
-    const deltaX = antes.left + antes.width / 2 - (depois.left + depois.width / 2);
-    const deltaY = antes.top + antes.height / 2 - (depois.top + depois.height / 2);
-    img.style.transition = 'none';
-    img.style.transformOrigin = 'center center';
-    img.style.transform = `translate(${deltaX}px, ${deltaY}px) scale(${escalaX}, ${escalaY})`;
-
-    requestAnimationFrame(() => {
-      img.style.transition = 'transform .45s cubic-bezier(.2,.7,.3,1)';
-      img.style.transform = 'none';
-      img.addEventListener('transitionend', () => {
-        img.style.transition = '';
-        img.style.transformOrigin = '';
-      }, { once: true });
-    });
-  } catch(e) { /* pior caso: a logo aparece no login sem animação, mas aparece */ }
 }
 
 // Rede de segurança: se algo travar, a splash sai sozinha em 12s.
