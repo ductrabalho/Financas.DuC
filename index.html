@@ -9,9 +9,8 @@
     background: #14161a;
     color: #e9e6df;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Arial, sans-serif;
-    max-width: 680px;
-    margin: 0 auto;
-    padding: 32px 20px 60px;
+    margin: 0;
+    padding: 32px 24px 60px;
   }
   #logo {
     height: 40px;
@@ -20,11 +19,8 @@
   }
   #grade {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
     gap: 10px;
-  }
-  @media (max-width: 480px) {
-    #grade { grid-template-columns: repeat(2, 1fr); }
   }
   a.item {
     padding: 14px 10px;
@@ -115,7 +111,7 @@ async function carregar() {
         const pb = b.numero.split(".").map(Number);
         for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
           const da = pa[i] || 0, db = pb[i] || 0;
-          if (da !== db) return db - da;
+          if (da !== db) return da - db;
         }
         return 0;
       });
