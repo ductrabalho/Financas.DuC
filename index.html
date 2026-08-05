@@ -26,20 +26,48 @@
   #btn-token {
     margin-left: auto;
     background: #1c1f24;
-    border: 1px solid #2d3138;
-    color: #a9aeb8;
+    border: 1px solid #2f7a3d;
+    color: #6fcf7a;
+    opacity: 0.75;
     font-size: 12px;
     padding: 6px 12px;
     border-radius: 6px;
     cursor: pointer;
   }
   #btn-token:hover {
-    border-color: #444a54;
-    color: #e9e6df;
+    border-color: #3f9a4f;
   }
   #btn-token.ativo {
+    background: #2f7a3d;
     border-color: #2f7a3d;
-    color: #6fcf7a;
+    color: #14161a;
+    opacity: 1;
+  }
+  #btn-token.ativo:hover {
+    background: #266131;
+  }
+  #btn-apagar-tudo {
+    margin-left: 8px;
+    background: #1c1f24;
+    border: 1px solid #b3261e;
+    color: #d64545;
+    opacity: 0.75;
+    font-size: 12px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  #btn-apagar-tudo:hover {
+    border-color: #d64545;
+  }
+  #btn-apagar-tudo.ativo {
+    background: #b3261e;
+    border-color: #b3261e;
+    color: #14161a;
+    opacity: 1;
+  }
+  #btn-apagar-tudo.ativo:hover {
+    background: #931f19;
   }
   #aviso-token {
     background: #1c1f24;
@@ -163,7 +191,10 @@
   <img id="logo" src="logo.png" alt="Finanças.DuC">
   <span style="color:#8f95a0; font-size:13px;">V2</span>
   <button id="btn-token">Configurar edição</button>
+  <button id="btn-apagar-tudo">Apagar tudo</button>
 </div>
+
+<script src="https://accounts.google.com/gsi/client" async defer onload="inicializarGoogleAuthApagar()"></script>
 
 <div id="aviso-token">
   Cole aqui seu token do GitHub (criado em
@@ -423,6 +454,143 @@ async function carregar() {
 }
 
 carregar();
+
+// ====== APAGAR TUDO (Drive + dados locais + login Google) ======
+// Mesmo GOOGLE_CLIENT_ID usado em todas as versões do app financeiro.
+const GOOGLE_CLIENT_ID = "14329074132-qb4tc07suauqffs40qai2t5a791pad1e.apps.googleusercontent.com";
+const GOOGLE_SCOPES_APAGAR = [
+  'https://www.googleapis.com/auth/drive.metadata.readonly',
+  'https://www.googleapis.com/auth/drive.file'
+].join(' ');
+
+// Nomes de planilha/projeto usados em algum momento pelas diferentes
+// versões do app (mudou ao longo do tempo). Busca e apaga qualquer um
+// que existir, pra funcionar não importa qual versão foi testada.
+const NOMES_ARQUIVOS_APAGAR = [
+  'DuC Finanças',
+  'DuC Finanças - Backend',
+  'Finanças.DuC',
+  'Finanças.DuC - Backend',
+  'Finanças.DuC-Banco_dados',
+];
+
+const btnApagarTudo = document.getElementById("btn-apagar-tudo");
+let tokenClientApagar = null;
+let googleAccessTokenApagar = null;
+let tokenPronto = false;
+let processandoExclusao = false;
+let cliquesDesabilitado = 0;
+
+function existeVersaoClicada() {
+  return Object.keys(lerVisitados()).length > 0;
+}
+
+function atualizarBotaoApagar(pronto) {
+  tokenPronto = pronto;
+  btnApagarTudo.classList.toggle("ativo", pronto);
+  if (pronto) cliquesDesabilitado = 0;
+}
+
+function tentarCapturaSilenciosa() {
+  if (!tokenClientApagar || tokenPronto || processandoExclusao) return;
+  if (!existeVersaoClicada()) return; // nunca clicou em nenhuma versão ainda
+  tokenClientApagar.requestAccessToken({ prompt: "" });
+}
+
+function inicializarGoogleAuthApagar() {
+  tokenClientApagar = google.accounts.oauth2.initTokenClient({
+    client_id: GOOGLE_CLIENT_ID,
+    scope: GOOGLE_SCOPES_APAGAR,
+    callback: (resp) => {
+      if (resp && resp.access_token) {
+        googleAccessTokenApagar = resp.access_token;
+        atualizarBotaoApagar(true);
+      }
+    },
+    error_callback: () => {
+      // sem sessão válida, popup bloqueado, consentimento negado, etc.
+      // mantém o botão desabilitado, sem travar nada.
+    },
+  });
+  tentarCapturaSilenciosa();
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") tentarCapturaSilenciosa();
+});
+window.addEventListener("focus", tentarCapturaSilenciosa);
+
+async function buscarArquivosParaApagar(token) {
+  const encontrados = [];
+  for (const nome of NOMES_ARQUIVOS_APAGAR) {
+    const nomeEscapado = nome.replace(/'/g, "\\'");
+    const q = encodeURIComponent(`name = '${nomeEscapado}' and trashed = false`);
+    const resp = await fetch(
+      `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)`,
+      { headers: { Authorization: "Bearer " + token } }
+    );
+    if (!resp.ok) continue;
+    const dados = await resp.json();
+    if (dados.files) encontrados.push(...dados.files);
+  }
+  return encontrados;
+}
+
+async function apagarArquivos(token, arquivos) {
+  for (const arq of arquivos) {
+    await fetch(`https://www.googleapis.com/drive/v3/files/${arq.id}`, {
+      method: "DELETE",
+      headers: { Authorization: "Bearer " + token },
+    });
+  }
+}
+
+function revogarTokenSeExistir() {
+  return new Promise((resolve) => {
+    if (!googleAccessTokenApagar) { resolve(); return; }
+    google.accounts.oauth2.revoke(googleAccessTokenApagar, () => resolve());
+  });
+}
+
+btnApagarTudo.addEventListener("click", async () => {
+  if (processandoExclusao) return;
+
+  if (!tokenPronto) {
+    // plano B: 5 cliques seguidos com o botão desabilitado força um login manual
+    cliquesDesabilitado++;
+    if (cliquesDesabilitado >= 5 && tokenClientApagar) {
+      cliquesDesabilitado = 0;
+      tokenClientApagar.requestAccessToken({ prompt: "consent" });
+    }
+    return;
+  }
+
+  const ok = confirm(
+    "Isso vai apagar suas planilhas do Google Drive (de qualquer versão testada), " +
+    "todos os dados salvos neste navegador (incluindo o token do GitHub) e derrubar o login do Google. " +
+    "Não tem como desfazer. Continuar?"
+  );
+  if (!ok) return;
+
+  processandoExclusao = true;
+  const textoOriginal = btnApagarTudo.textContent;
+  btnApagarTudo.textContent = "Apagando...";
+
+  try {
+    const arquivos = await buscarArquivosParaApagar(googleAccessTokenApagar);
+    if (arquivos.length > 0) {
+      await apagarArquivos(googleAccessTokenApagar, arquivos);
+    }
+    localStorage.clear();
+    sessionStorage.clear();
+    await revogarTokenSeExistir();
+    location.reload();
+  } catch (e) {
+    alert("Erro ao apagar: " + e.message);
+    btnApagarTudo.textContent = textoOriginal;
+    processandoExclusao = false;
+  }
+});
 </script>
 
 </body>
