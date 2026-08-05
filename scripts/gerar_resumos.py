@@ -15,8 +15,9 @@ O index.html só lê o resumos.json pronto — não chama IA nenhuma
 em produção, então não tem custo nem risco de expor chave de API
 no navegador de quem visita o site.
 
-Precisa da variável de ambiente ANTHROPIC_API_KEY (definida como
-secret no GitHub Actions).
+Usa o GitHub Models (gratuito) pra gerar o texto — não precisa
+criar nem colar nenhuma chave de API. O próprio GitHub Actions já
+fornece o token automaticamente (GITHUB_TOKEN).
 """
 
 import json
@@ -29,8 +30,8 @@ from PIL import ImageFont
 
 PASTA = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ARQUIVO_RESUMOS = os.path.join(PASTA, "resumos.json")
-API_KEY = os.environ.get("ANTHROPIC_API_KEY")
-MODELO = "claude-sonnet-4-6"
+API_KEY = os.environ.get("GITHUB_TOKEN")
+MODELO = "openai/gpt-4o-mini"
 
 # Precisam bater com o CSS do index.html (.resumo). Se mudar o card lá,
 # ajustar aqui também.
@@ -119,36 +120,32 @@ def extrair_diff_relevante(texto_antigo, texto_novo, max_linhas=400):
     return "\n".join(diff)
 
 
-def _chamar_claude(prompt):
+def _chamar_ia(prompt):
     corpo = json.dumps(
         {
             "model": MODELO,
-            "max_tokens": 200,
             "messages": [{"role": "user", "content": prompt}],
         }
     ).encode("utf-8")
 
     req = urllib.request.Request(
-        "https://api.anthropic.com/v1/messages",
+        "https://models.github.ai/inference/chat/completions",
         data=corpo,
         headers={
             "Content-Type": "application/json",
-            "x-api-key": API_KEY,
-            "anthropic-version": "2023-06-01",
+            "Authorization": f"Bearer {API_KEY}",
         },
         method="POST",
     )
     with urllib.request.urlopen(req, timeout=60) as resp:
         dados = json.loads(resp.read().decode("utf-8"))
 
-    return "".join(
-        bloco.get("text", "") for bloco in dados.get("content", []) if bloco.get("type") == "text"
-    ).strip()
+    return dados["choices"][0]["message"]["content"].strip()
 
 
 def pedir_resumo_ia(numero, diff_texto, eh_primeira_versao):
     if not API_KEY:
-        raise RuntimeError("ANTHROPIC_API_KEY não definida no ambiente.")
+        raise RuntimeError("GITHUB_TOKEN não definida no ambiente.")
 
     if eh_primeira_versao:
         contexto = (
@@ -190,7 +187,7 @@ def pedir_resumo_ia(numero, diff_texto, eh_primeira_versao):
     prompt = instrucao_base
 
     for tentativa in range(1, MAX_TENTATIVAS + 1):
-        texto = _chamar_claude(prompt).strip().strip('"')
+        texto = _chamar_ia(prompt).strip().strip('"')
         linhas = quebrar_em_linhas(texto)
 
         # guarda o melhor resultado até agora (o que ocupa menos linhas)

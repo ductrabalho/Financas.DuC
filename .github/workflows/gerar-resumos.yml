@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: write
+  models: read
 
 jobs:
   resumir:
@@ -23,7 +24,7 @@ jobs:
 
       - name: Gerar resumos.json
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           pip install pillow
           python scripts/gerar_resumos.py
