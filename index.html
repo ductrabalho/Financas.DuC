@@ -189,7 +189,7 @@
 
 <div id="topo">
   <img id="logo" src="logo.png" alt="Finanças.DuC">
-  <span style="color:#8f95a0; font-size:13px;">V2</span>
+  <span style="color:#8f95a0; font-size:13px;">V3</span>
   <button id="btn-token">Configurar edição</button>
   <button id="btn-apagar-tudo">Apagar tudo</button>
 </div>
@@ -414,7 +414,7 @@ async function carregar() {
       const areaNota = document.createElement("textarea");
       areaNota.className = "nota";
       areaNota.rows = 2;
-      areaNota.placeholder = temToken() ? "Sua observação (2 linhas)..." : "Configure a edição pra escrever aqui";
+      areaNota.placeholder = "";
       areaNota.value = nota;
       areaNota.readOnly = !temToken();
 
@@ -561,8 +561,19 @@ btnApagarTudo.addEventListener("click", async () => {
   if (processandoExclusao) return;
 
   if (!tokenPronto) {
-    // plano B: 5 cliques seguidos com o botão desabilitado força um login manual
     cliquesDesabilitado++;
+
+    // 2 cliques seguidos: limpa só dados locais (cache, token do GitHub,
+    // versões visitadas) - nada de Drive, sem confirm, já que não é
+    // destrutivo remotamente.
+    if (cliquesDesabilitado === 2) {
+      localStorage.clear();
+      sessionStorage.clear();
+      location.reload();
+      return;
+    }
+
+    // plano B: 5 cliques seguidos com o botão desabilitado força um login manual
     if (cliquesDesabilitado >= 5 && tokenClientApagar) {
       cliquesDesabilitado = 0;
       tokenClientApagar.requestAccessToken({ prompt: "consent" });
