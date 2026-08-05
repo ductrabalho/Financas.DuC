@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Finanças.DuC — Versões</title>
+<style>
+  body {
+    background: #14161a;
+    color: #e9e6df;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Arial, sans-serif;
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 32px 20px 60px;
+  }
+  #logo {
+    height: 40px;
+    display: block;
+    margin: 0 0 24px;
+  }
+  #grade {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+  @media (max-width: 480px) {
+    #grade { grid-template-columns: repeat(2, 1fr); }
+  }
+  a.item {
+    padding: 14px 10px;
+    background: #1c1f24;
+    border: 1px solid #2d3138;
+    border-radius: 8px;
+    color: #e9e6df;
+    text-decoration: none;
+    font-size: 13px;
+    text-align: center;
+    transition: background-color 0.15s, border-color 0.15s;
+  }
+  a.item:hover {
+    background: #378ADD;
+    border-color: #378ADD;
+    color: #ffffff;
+  }
+  a.item.visitado {
+    background: #2d3138;
+    border-color: #444a54;
+  }
+  a.item.visitado:hover {
+    background: #378ADD;
+    border-color: #378ADD;
+    color: #ffffff;
+  }
+  #status {
+    color: #8f95a0;
+    font-size: 14px;
+    padding: 20px 0;
+  }
+</style>
+</head>
+<body>
+
+<img id="logo" src="logo.png" alt="Finanças.DuC">
+
+<div id="status">Carregando lista de versões...</div>
+<div id="grade"></div>
+
+<script>
+const OWNER = "ductrabalho";
+const REPO = "Financas.DuC";
+const BRANCH = "main";
+const VISITADO_HORAS = 6;
+const CHAVE_STORAGE = "duc_financas_visitados";
+
+function lerVisitados() {
+  try {
+    const raw = localStorage.getItem(CHAVE_STORAGE);
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+function marcarVisitado(nome) {
+  const dados = lerVisitados();
+  dados[nome] = Date.now();
+  localStorage.setItem(CHAVE_STORAGE, JSON.stringify(dados));
+}
+
+function estaVisitadoRecente(nome) {
+  const dados = lerVisitados();
+  const quando = dados[nome];
+  if (!quando) return false;
+  const horasPassadas = (Date.now() - quando) / (1000 * 60 * 60);
+  return horasPassadas < VISITADO_HORAS;
+}
+
+async function carregar() {
+  const status = document.getElementById("status");
+  const grade = document.getElementById("grade");
+  try {
+    const resp = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/contents/?ref=${BRANCH}`);
+    if (!resp.ok) throw new Error("Falha ao consultar repositório (" + resp.status + ")");
+    const arquivos = await resp.json();
+
+    const versoes = arquivos
+      .filter(a => a.type === "file" && /^index-V.+\.html$/i.test(a.name) && a.name.toLowerCase() !== "index.html")
+      .map(a => {
+        const m = a.name.match(/^index-V([\d.]+)\.html$/i);
+        const numero = m ? m[1] : a.name;
+        return { nome: a.name, numero: numero };
+      })
+      .sort((a, b) => {
+        const pa = a.numero.split(".").map(Number);
+        const pb = b.numero.split(".").map(Number);
+        for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+          const da = pa[i] || 0, db = pb[i] || 0;
+          if (da !== db) return db - da;
+        }
+        return 0;
+      });
+
+    status.remove();
+
+    if (versoes.length === 0) {
+      grade.innerHTML = '<div id="status">Nenhuma versão encontrada.</div>';
+      return;
+    }
+
+    for (const v of versoes) {
+      const link = document.createElement("a");
+      link.className = "item" + (estaVisitadoRecente(v.nome) ? " visitado" : "");
+      link.href = v.nome;
+      link.target = "_blank";
+      link.textContent = "Finanças.DuC V" + v.numero;
+      link.addEventListener("click", () => marcarVisitado(v.nome));
+      grade.appendChild(link);
+    }
+  } catch (err) {
+    status.textContent = "Erro ao carregar a lista: " + err.message;
+  }
+}
+
+carregar();
+</script>
+
+</body>
+</html>
