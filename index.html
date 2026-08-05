@@ -152,7 +152,7 @@
   .nota {
     width: 100%;
     box-sizing: border-box;
-    background: #14161a;
+    background: transparent;
     color: #e9e6df;
     border: none;
     border-top: 1px solid #2d3138;
@@ -399,7 +399,11 @@ async function carregar() {
       link.href = v.nome;
       link.target = "_blank";
       link.textContent = "Finanças.DuC V" + v.numero;
-      link.addEventListener("click", () => marcarVisitado(v.nome));
+      link.addEventListener("click", () => {
+        marcarVisitado(v.nome);
+        versaoClicadaNestaSessao = true;
+        tentarCapturaSilenciosa();
+      });
 
       const areaResumo = document.createElement("textarea");
       areaResumo.className = "resumo";
@@ -480,9 +484,10 @@ let googleAccessTokenApagar = null;
 let tokenPronto = false;
 let processandoExclusao = false;
 let cliquesDesabilitado = 0;
+let versaoClicadaNestaSessao = false; // reseta a cada carregamento do index.html
 
 function existeVersaoClicada() {
-  return Object.keys(lerVisitados()).length > 0;
+  return versaoClicadaNestaSessao;
 }
 
 function atualizarBotaoApagar(pronto) {
