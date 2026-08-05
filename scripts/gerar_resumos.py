@@ -24,6 +24,7 @@ import json
 import os
 import re
 import sys
+import time
 import urllib.request
 
 from PIL import ImageFont
@@ -218,6 +219,9 @@ def pedir_resumo_ia(numero, diff_texto, eh_primeira_versao):
     return melhor_texto
 
 
+PAUSA_ENTRE_CHAMADAS_SEG = 3
+
+
 def main():
     versoes = listar_versoes()
     if not versoes:
@@ -250,8 +254,13 @@ def main():
         houve_mudanca = True
         print(f"V{numero}: {resumo}")
 
-    if houve_mudanca:
+        # salva a cada versão — se der 429 (limite da Groq) no meio,
+        # o que já foi gerado não se perde, e a próxima execução do
+        # Action continua de onde parou.
         salvar_resumos(resumos)
+        time.sleep(PAUSA_ENTRE_CHAMADAS_SEG)
+
+    if houve_mudanca:
         print(f"\nresumos.json atualizado ({len(resumos)} versões).")
     else:
         print("Nada novo pra resumir.")
