@@ -15,9 +15,9 @@ O index.html só lê o resumos.json pronto — não chama IA nenhuma
 em produção, então não tem custo nem risco de expor chave de API
 no navegador de quem visita o site.
 
-Usa o GitHub Models (gratuito) pra gerar o texto — não precisa
-criar nem colar nenhuma chave de API. O próprio GitHub Actions já
-fornece o token automaticamente (GITHUB_TOKEN).
+Usa a Groq (gratuito, sem cartão) pra gerar o texto. Precisa
+criar uma chave em console.groq.com e colar como secret
+GROQ_API_KEY no GitHub Actions.
 """
 
 import json
@@ -30,8 +30,8 @@ from PIL import ImageFont
 
 PASTA = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ARQUIVO_RESUMOS = os.path.join(PASTA, "resumos.json")
-API_KEY = os.environ.get("GITHUB_TOKEN")
-MODELO = "openai/gpt-4o-mini"
+API_KEY = os.environ.get("GROQ_API_KEY")
+MODELO = "llama-3.3-70b-versatile"
 
 # Precisam bater com o CSS do index.html (.resumo). Se mudar o card lá,
 # ajustar aqui também.
@@ -129,7 +129,7 @@ def _chamar_ia(prompt):
     ).encode("utf-8")
 
     req = urllib.request.Request(
-        "https://models.github.ai/inference/chat/completions",
+        "https://api.groq.com/openai/v1/chat/completions",
         data=corpo,
         headers={
             "Content-Type": "application/json",
@@ -145,7 +145,7 @@ def _chamar_ia(prompt):
 
 def pedir_resumo_ia(numero, diff_texto, eh_primeira_versao):
     if not API_KEY:
-        raise RuntimeError("GITHUB_TOKEN não definida no ambiente.")
+        raise RuntimeError("GROQ_API_KEY não definida no ambiente.")
 
     if eh_primeira_versao:
         contexto = (

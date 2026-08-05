@@ -8,7 +8,6 @@ on:
 
 permissions:
   contents: write
-  models: read
 
 jobs:
   resumir:
@@ -24,7 +23,7 @@ jobs:
 
       - name: Gerar resumos.json
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: |
           pip install pillow
           python scripts/gerar_resumos.py
