@@ -121,6 +121,10 @@ def extrair_diff_relevante(texto_antigo, texto_novo, max_linhas=400):
     return "\n".join(diff)
 
 
+PAUSA_RETRY_ERRO_SEG = 60
+MAX_TENTATIVAS_ERRO = 2
+
+
 def _chamar_ia(prompt):
     corpo = json.dumps(
         {
@@ -139,10 +143,22 @@ def _chamar_ia(prompt):
         },
         method="POST",
     )
-    with urllib.request.urlopen(req, timeout=60) as resp:
-        dados = json.loads(resp.read().decode("utf-8"))
 
-    return dados["choices"][0]["message"]["content"].strip()
+    ultimo_erro = None
+    for tentativa_erro in range(1, MAX_TENTATIVAS_ERRO + 1):
+        try:
+            with urllib.request.urlopen(req, timeout=60) as resp:
+                dados = json.loads(resp.read().decode("utf-8"))
+            return dados["choices"][0]["message"]["content"].strip()
+        except Exception as e:
+            ultimo_erro = e
+            if tentativa_erro < MAX_TENTATIVAS_ERRO:
+                print(
+                    f"  [aviso] erro na chamada ({e}), tentando de novo em "
+                    f"{PAUSA_RETRY_ERRO_SEG}s..."
+                )
+                time.sleep(PAUSA_RETRY_ERRO_SEG)
+    raise ultimo_erro
 
 
 def pedir_resumo_ia(numero, diff_texto, eh_primeira_versao):
@@ -219,7 +235,7 @@ def pedir_resumo_ia(numero, diff_texto, eh_primeira_versao):
     return melhor_texto
 
 
-PAUSA_ENTRE_CHAMADAS_SEG = 3
+PAUSA_ENTRE_CHAMADAS_SEG = 30
 
 
 def main():
