@@ -41,5 +41,9 @@
   "06": "Ajustes internos, sem mudança perceptível",
   "07": "o app agora mostra aviso se a conexão demorar e você pode tentar de novo",
   "08": "Agora o app lembra suas configurações ao entrar com sua conta do Google",
-  "09": "Agora ele continua onde parou se algo der errado ou você fechar o app"
+  "09": "Agora ele continua onde parou se algo der errado ou você fechar o app",
+  "42.3": {
+    "resumo": "Ajustes e correções, resumo ainda não gerado.",
+    "nota": "entra"
+  }
 }
