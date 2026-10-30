@@ -1,7 +1,7 @@
 <!--
 ================================================================================
   Finanças.DuC — index.html
-  Versão atual: V00.053  (ver <title> na linha 6)
+  Versão atual: V00.054  (ver <title> na linha 6)
 
   🔗 LINK DO APP (GitHub Pages):
       https://ductrabalho.github.io/Financas.DuC/
@@ -179,7 +179,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Finanças.DuC V00.053</title>
+<title>Finanças.DuC V00.054</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://accounts.google.com/gsi/client" async defer onload="inicializarGoogleAuth()"></script>
@@ -3441,27 +3441,46 @@ setTimeout(esconderSplash, 12000);
       var card = tela.querySelector('.action-card');
       if (!logo || !card) return;
       tela.style.setProperty('--escala-entrada', '1');
+      // ALTERADO V00.054 — Mede SEMPRE com o cartão no estado padrão (botão de login), nunca
+      // no estado de carregamento. Assim a escala — e o tamanho da logo —
+      // é a mesma em todas as telas da inicialização.
+      var dc = tela.querySelector('#login-default-content');
+      var ld = tela.querySelector('#login-loading');
+      var st = tela.querySelector('#status-entrada');
+      var dcOc = dc && dc.classList.contains('oculto');
+      var ldOc = ld && ld.classList.contains('oculto');
+      var stOc = st && st.classList.contains('oculto');
+      card.style.minHeight = '';
+      if (dc) dc.classList.remove('oculto');
+      if (ld) ld.classList.add('oculto');
+      if (st) st.classList.add('oculto');
       var altura = card.getBoundingClientRect().bottom - logo.getBoundingClientRect().top;
+      var alturaCard = card.getBoundingClientRect().height;
+      if (dc && dcOc) dc.classList.add('oculto');
+      if (ld && !ldOc) ld.classList.remove('oculto');
+      if (st && !stOc) st.classList.remove('oculto');
       if (!(altura > 0)) return;
+      // Cartão nunca encolhe: o layout não se mexe entre as telas.
+      card.style.minHeight = alturaCard + 'px';
       var porAltura = (window.innerHeight - RESERVA - MARGEM) / altura;
       var porLargura = (window.innerWidth - 48) / LARGURA;
       var escala = Math.max(0.3, Math.min(porAltura, porLargura, 2));
       tela.style.setProperty('--escala-entrada', String(escala));
     } finally { ocupado = false; }
   }
-  var agendado = false;
-  function agendar(){
-    if (agendado) return;
-    agendado = true;
-    requestAnimationFrame(function(){ agendado = false; ajustar(); });
-  }
-  window.addEventListener('resize', agendar);
-  window.addEventListener('load', agendar);
-  if (document.fonts && document.fonts.ready) document.fonts.ready.then(agendar);
-  var card = tela.querySelector('.action-card');
-  if (card && window.MutationObserver){
-    new MutationObserver(agendar).observe(card, { subtree: true, childList: true, attributes: true, characterData: true });
-  }
+  // ALTERADO V00.054 — Escala calculada UMA vez e depois travada: redimensionar a janela
+  // não muda mais nada (logo, subtítulo, versão e cartão ficam fixos).
+  var travado = false;
+  var ajustarOriginal = ajustar;
+  ajustar = function(){ if (!travado) ajustarOriginal(); };
+  var carregou = new Promise(function(ok){
+    if (document.readyState === 'complete') ok();
+    else window.addEventListener('load', ok, { once: true });
+  });
+  var fontes = (document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve();
+  Promise.all([carregou, fontes]).then(function(){
+    requestAnimationFrame(function(){ ajustar(); travado = true; });
+  });
   ajustar();
 })();
 </script>
