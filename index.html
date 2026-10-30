@@ -1,7 +1,7 @@
 <!--
 ================================================================================
   Finanças.DuC — index.html
-  Versão atual: V00.056  (ver <title> na linha 6)
+  Versão atual: V00.058  (ver <title> na linha 6)
 
   🔗 LINK DO APP (GitHub Pages):
       https://ductrabalho.github.io/Financas.DuC/
@@ -178,8 +178,9 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Finanças.DuC V00.056</title>
+<!-- ALTERADO V00.058 — zoom do navegador bloqueado (ver script ANTI-ZOOM no fim) -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Finanças.DuC V00.058</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://accounts.google.com/gsi/client" async defer onload="inicializarGoogleAuth()"></script>
@@ -879,10 +880,22 @@
     justify-content: center;
   }
   #tela-entrada #login-loading{ padding: 0; }
+  /* ALTERADO V00.057 — bolinha a 25px do topo do cartão (mesma distância do botão
+     até o rodapé: 24px de padding + 1px de borda); passos centralizados no cartão. */
   #tela-entrada .login-spinner{
     width: 64px; height: 64px;
     border-width: 4px;
-    margin: 0 auto 34px;
+    margin: 0;
+    position: absolute;
+    top: 24px;
+    left: 50%;
+    margin-left: -32px;
+  }
+  #tela-entrada .login-passos{
+    position: absolute;
+    left: 24px; right: 24px;
+    top: 50%;
+    transform: translateY(-50%);
   }
   #tela-entrada .login-passos{ gap: 18px; }
   #tela-entrada .login-passo{ font-size: 1.05rem; }
@@ -905,6 +918,9 @@
   }
 
   
+  /* ALTERADO V00.058 — sem zoom por pinça / toque duplo; texto não é reescalado pelo navegador */
+  html, body{ touch-action: pan-x pan-y; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+
   /* Telas secundárias de entrada: centralização vertical igual à tela-entrada */
   .tela-sec{
     box-sizing: border-box;
@@ -3533,6 +3549,36 @@ setTimeout(esconderSplash, 12000);
     requestAnimationFrame(function(){ ajustar(); travado = true; });
   });
   ajustar();
+  // ALTERADO V00.058 — O site se adapta ao tamanho da janela SEMPRE: redimensionar
+  // recalcula a escala. Se o devicePixelRatio mudou (= zoom do navegador), ignora.
+  var dprBase = window.devicePixelRatio;
+  var tResize = null;
+  window.addEventListener('resize', function(){
+    if (window.devicePixelRatio !== dprBase) return;
+    clearTimeout(tResize);
+    tResize = setTimeout(function(){ travado = false; ajustar(); travado = true; }, 60);
+  });
+})();
+</script>
+
+<script>
+/* ANTI-ZOOM V00.058 — bloqueia zoom por Ctrl+roda, Ctrl +/-/0, pinça e gestos. */
+(function(){
+  var opt = { passive: false, capture: true };
+  window.addEventListener('wheel', function(e){ if (e.ctrlKey) e.preventDefault(); }, opt);
+  window.addEventListener('keydown', function(e){
+    if (!(e.ctrlKey || e.metaKey)) return;
+    var k = e.key, c = e.code;
+    if (k === '+' || k === '-' || k === '=' || k === '_' || k === '0' ||
+        c === 'NumpadAdd' || c === 'NumpadSubtract' || c === 'Numpad0' ||
+        c === 'Equal' || c === 'Minus' || c === 'Digit0') e.preventDefault();
+  }, opt);
+  ['gesturestart','gesturechange','gestureend'].forEach(function(n){
+    document.addEventListener(n, function(e){ e.preventDefault(); }, opt);
+  });
+  document.addEventListener('touchmove', function(e){
+    if (e.touches && e.touches.length > 1) e.preventDefault();
+  }, opt);
 })();
 </script>
 </body>
