@@ -1,7 +1,7 @@
 <!--
 ================================================================================
   Finanças.DuC — index.html
-  Versão atual: V00.055  (ver <title> na linha 6)
+  Versão atual: V00.056  (ver <title> na linha 6)
 
   🔗 LINK DO APP (GitHub Pages):
       https://ductrabalho.github.io/Financas.DuC/
@@ -179,7 +179,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Finanças.DuC V00.055</title>
+<title>Finanças.DuC V00.056</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://accounts.google.com/gsi/client" async defer onload="inicializarGoogleAuth()"></script>
@@ -887,9 +887,20 @@
   #tela-entrada .login-passos{ gap: 18px; }
   #tela-entrada .login-passo{ font-size: 1.05rem; }
   #tela-entrada .login-passo .passo-icone{ font-size: 0.9rem; }
+  /* ALTERADO V00.056 — a caixa de status (ex.: "Abrindo o login do Google...") fica no
+     MESMO lugar e com o MESMO tamanho do botão "Iniciar com conta Google".
+     As medidas do botão são gravadas no cartão (--st-*) pelo script, no clique. */
   #tela-entrada .action-card:has(#login-loading:not(.oculto)) #status-entrada{
-    margin: 34px 0 0;
-    position: relative; top: 22px; /* ALTERADO V00.055 — caixa de status mais abaixo */
+    position: absolute;
+    left: var(--st-left, 24px);
+    top: var(--st-top, auto);
+    width: var(--st-w, auto);
+    min-height: var(--st-h, 48px);
+    box-sizing: border-box;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     text-align: center;
   }
 
@@ -2682,6 +2693,20 @@ async function tratarLoginUnificado(token, erro){
 }
 
 document.getElementById('btn-entrar-google').addEventListener('click', () => {
+  // ALTERADO V00.056 — Grava posição e tamanho do botão ANTES de escondê-lo.
+  // A caixa de status ocupa exatamente esse lugar (ver CSS #status-entrada).
+  (function(){
+    const btn = document.getElementById('btn-entrar-google');
+    const card = btn.closest('.action-card');
+    if (!btn || !card) return;
+    let x = 0, y = 0, el = btn;
+    while (el && el !== card){ x += el.offsetLeft; y += el.offsetTop; el = el.offsetParent; }
+    if (el !== card) return;
+    card.style.setProperty('--st-left', x + 'px');
+    card.style.setProperty('--st-top', y + 'px');
+    card.style.setProperty('--st-w', btn.offsetWidth + 'px');
+    card.style.setProperty('--st-h', btn.offsetHeight + 'px');
+  })();
   // Trocar para estado de carregamento
   document.getElementById('login-default-content').classList.add('oculto');
   document.getElementById('login-loading').classList.remove('oculto');
