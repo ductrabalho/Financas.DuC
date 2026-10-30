@@ -1,7 +1,7 @@
 <!--
 ================================================================================
   Finanças.DuC — index.html
-  Versão atual: V00.059  (ver <title> na linha 6)
+  Versão atual: V00.060  (ver <title> na linha 6)
 
   🔗 LINK DO APP (GitHub Pages):
       https://ductrabalho.github.io/Financas.DuC/
@@ -180,7 +180,7 @@
 <meta charset="UTF-8">
 <!-- ALTERADO V00.058 — zoom do navegador bloqueado (ver script ANTI-ZOOM no fim) -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Finanças.DuC V00.059</title>
+<title>Finanças.DuC V00.060</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://accounts.google.com/gsi/client" async defer onload="inicializarGoogleAuth()"></script>
@@ -908,7 +908,7 @@
     padding: 12px 14px;
     font-size: 0.78rem;
     line-height: 1.45;
-    text-align: left;
+    text-align: center; /* ALTERADO V00.060 */
   }
   #tela-entrada .action-card:has(#status-entrada.status-aviso:not(.oculto)) .login-passos{
     top: 108px;
@@ -2543,7 +2543,7 @@ function tratarApiAppsScriptDesativada(statusFn, el, spreadsheetIdExistente){
   if (monitorApiAppsScriptAtivo) return;
   el.classList.remove('oculto');
   el.className = 'status-auto status-aviso';
-  el.style.textAlign = 'left';
+  el.style.textAlign = 'center'; // ALTERADO V00.060 — sempre centralizado
   el.innerHTML = `
     <b>Ativação necessária.</b><br>
     Ative o Google Apps Script API para continuar.<br>
