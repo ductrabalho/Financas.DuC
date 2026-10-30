@@ -1,7 +1,7 @@
 <!--
 ================================================================================
   Finanças.DuC — index.html
-  Versão atual: V00.050  (ver <title> na linha 6)
+  Versão atual: V00.053  (ver <title> na linha 6)
 
   🔗 LINK DO APP (GitHub Pages):
       https://ductrabalho.github.io/Financas.DuC/
@@ -179,7 +179,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Finanças.DuC V00.050</title>
+<title>Finanças.DuC V00.053</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://accounts.google.com/gsi/client" async defer onload="inicializarGoogleAuth()"></script>
@@ -619,7 +619,7 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 0 24px 126px;
+    padding: 0 24px 84px;
     position: relative;
     z-index: 10000; /* acima do #splash (9999): aparece por cima dele,
                         sem precisar que a splash saia da tela */
@@ -643,7 +643,7 @@
        restante da tela (subtítulo, tag, card) fique na posição exata
        que ele aprovou. Fica sempre vazia: a logo real vive em #splash
        e nunca é movida para dentro dela. */
-    width: min(340px, 90%);
+    width: min(520px, 90%);
     aspect-ratio: 5.1 / 1;
     margin: 0 auto 82px;
     position: relative;
@@ -654,7 +654,7 @@
   #tela-entrada .logo-subtitulo,
   #tela-entrada .logo-tag,
   #tela-entrada .action-card{
-    zoom: 1.5;
+    zoom: var(--escala-entrada, 1);
   }
   #tela-entrada .logo-subtitulo,
   #tela-entrada .logo-tag,
@@ -717,17 +717,20 @@
     border: 1px solid var(--line);
     border-radius: 16px;
     padding: 24px;
-    width: 100%;
-    max-width: 340px;
+    width: min(520px, 90%);
     position: relative;
     z-index: 1;
   }
   #tela-entrada .action-desc{
     color: var(--text-dim);
-    font-size: 0.64rem; /* menor: "Use sua conta Google para acessar suas finanças." cabe em uma linha */
+    font-size: 0.95rem;
     line-height: 1.6;
     text-align: center;
     margin-bottom: 20px;
+    white-space: nowrap;
+  }
+  @media (max-width: 760px){
+    #tela-entrada .action-desc{ white-space: normal; }
   }
   #tela-entrada .action-divisor{
     display: flex;
@@ -1019,9 +1022,17 @@
     <div class="action-card">
       <div id="login-default-content">
         <p class="entrada-texto action-desc">
-          <span style="white-space:nowrap;">Use sua conta Google para acessar suas finanças.</span><br>
-          Se ainda não tiver um banco de dados,<br>
-          criamos um pra você na hora.
+Use sua conta Google para acessar suas finanças.<br>
+Seus dados ficam salvos no seu Google Drive.<br>
+Eles ficam seguros e totalmente confidenciais.<br>
+<br>
+Tudo fica guardado em um arquivo chamado:<br>
+<b style="font-size:1.15em;">Finanças.DuC-Banco_de_dados</b><br>
+Ele é a minha memória e eu cuido dele para você.<br>
+Peço que não abra nem edite o arquivo, por favor.<br>
+Se editar ou apagar, suas informações se perdem.<br>
+<br>
+Se for sua primeira vez, eu crio o arquivo para você.
         </p>
         <div class="action-divisor"><span>entrar</span></div>
         <button class="full btn-primary" id="btn-entrar-google">Iniciar com conta Google</button>
@@ -1051,7 +1062,7 @@
 
   <div id="tela-mesclagem" class="oculto tela-sec">
     <div class="entrada-caixa">
-      <p class="entrada-texto">Encontramos mais de uma planilha "Finanças.DuC" na sua conta Google. Escolha quais deseja unir em uma única planilha.</p>
+      <p class="entrada-texto">Encontramos mais de um arquivo de finanças na sua conta Google. Escolha quais deseja unir em uma única planilha.</p>
       <div id="lista-mesclagem" class="lista-mesclagem"></div>
       <button class="full" id="btn-mesclagem-confirmar">Unir selecionadas</button>
       <button class="full secundario" id="btn-mesclagem-cancelar" style="margin-top:10px;">Cancelar</button>
@@ -2341,7 +2352,7 @@ async function rodarProvisionamento(spreadsheetIdExistente, statusFn = atualizar
       statusFn('info', '2/6 — Criando sua planilha no Google Sheets...');
       const planilha = await chamarGoogleAPI('https://sheets.googleapis.com/v4/spreadsheets', {
         method: 'POST',
-        body: { properties: { title: 'Finanças.DuC' } }
+        body: { properties: { title: 'Finanças.DuC-Banco_de_dados' } }
       });
       pendente.spreadsheetId = planilha.spreadsheetId;
       salvarProvisionamentoPendente(pendente);
@@ -2365,7 +2376,7 @@ async function rodarProvisionamento(spreadsheetIdExistente, statusFn = atualizar
       statusFn('info', '3/6 — Criando o script vinculado à planilha...');
       const projeto = await chamarGoogleAPI('https://script.googleapis.com/v1/projects', {
         method: 'POST',
-        body: { title: 'Finanças.DuC - Backend', parentId: spreadsheetId }
+        body: { title: 'Finanças.DuC-Banco_de_dados', parentId: spreadsheetId }
       });
       pendente.scriptId = projeto.scriptId;
       salvarProvisionamentoPendente(pendente);
@@ -2609,7 +2620,7 @@ function atualizarStatusEntrada(tipo, texto){
 
 async function buscarPlanilhasFinancasDuC(){
   const params = new URLSearchParams({
-    q: "name = 'Finanças.DuC' and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false",
+    q: "name = 'Finanças.DuC-Banco_de_dados' and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false",
     fields: 'files(id,name,modifiedTime)',
     orderBy: 'modifiedTime desc'
   });
@@ -2628,7 +2639,7 @@ async function conectarNaPlanilha(spreadsheetId, statusFn = atualizarStatusAuto,
 // mostrando os passos 0/4..4/4 na própria tela de entrada.
 async function tratarLoginUnificado(token, erro){
   if (erro){ atualizarStatusEntrada('erro', '❌ Permissão não concedida (' + erro + ').'); return; }
-  atualizarStatusEntrada('info', 'Procurando suas planilhas "Finanças.DuC" no Google Drive...');
+  atualizarStatusEntrada('info', 'Procurando o arquivo Finanças.DuC-Banco_de_dados no Google Drive...');
   try {
     const arquivos = await buscarPlanilhasFinancasDuC();
     if (arquivos.length === 0){
@@ -2678,7 +2689,7 @@ document.getElementById('btn-nao-encontrada-voltar').addEventListener('click', (
   elStatusEntrada.classList.add('oculto');
 });
 
-// ---------- Mesclagem de planilhas "Finanças.DuC" ----------
+// ---------- Mesclagem de arquivos "Finanças.DuC-Banco_de_dados" ----------
 let arquivosParaMesclar = [];
 
 function formatarDataHoraBR(iso){
@@ -2693,7 +2704,7 @@ function abrirTelaMesclagem(arquivos){
     <label class="item-mesclagem">
       <input type="checkbox" class="check-mesclagem" value="${a.id}" checked>
       <div class="item-mesclagem-info">
-        <span class="item-mesclagem-nome">Finanças.DuC</span>
+        <span class="item-mesclagem-nome">${a.name}</span>
         <span class="item-mesclagem-data">Modificada em ${formatarDataHoraBR(a.modifiedTime)}</span>
       </div>
     </label>
@@ -2767,7 +2778,7 @@ document.getElementById('btn-mesclagem-confirmar').addEventListener('click', asy
     atualizarStatusMesclagem('info', 'Criando a nova planilha unificada...');
     const novaPlanilha = await chamarGoogleAPI('https://sheets.googleapis.com/v4/spreadsheets', {
       method: 'POST',
-      body: { properties: { title: 'Finanças.DuC' }, sheets: Object.keys(abasUnificadas).map(t => ({ properties: { title: t } })) }
+      body: { properties: { title: 'Finanças.DuC-Banco_de_dados' }, sheets: Object.keys(abasUnificadas).map(t => ({ properties: { title: t } })) }
     });
     const novoId = novaPlanilha.spreadsheetId;
 
@@ -3409,6 +3420,49 @@ setTimeout(esconderSplash, 12000);
    setTimeout(checarAtualizacao, 8000);
    setInterval(checarAtualizacao, CHECAR_ATUALIZACAO_MS);
  }
+})();
+</script>
+<script>
+/* Ajuste automático da tela de entrada: a logo e a caixa encolhem ou
+   crescem juntas para sempre caberem na janela, com pequena margem em
+   cima e embaixo, em qualquer tamanho de janela ou zoom do navegador. */
+(function(){
+  var tela = document.getElementById('tela-entrada');
+  if (!tela) return;
+  var MARGEM = 40;    // folga total, em cima e embaixo
+  var RESERVA = 84;   // mesmo espaço do padding-bottom da tela
+  var LARGURA = 520;  // largura da caixa na escala 1
+  var ocupado = false;
+  function ajustar(){
+    if (ocupado) return;
+    ocupado = true;
+    try {
+      var logo = tela.querySelector('.logo-grande');
+      var card = tela.querySelector('.action-card');
+      if (!logo || !card) return;
+      tela.style.setProperty('--escala-entrada', '1');
+      var altura = card.getBoundingClientRect().bottom - logo.getBoundingClientRect().top;
+      if (!(altura > 0)) return;
+      var porAltura = (window.innerHeight - RESERVA - MARGEM) / altura;
+      var porLargura = (window.innerWidth - 48) / LARGURA;
+      var escala = Math.max(0.3, Math.min(porAltura, porLargura, 2));
+      tela.style.setProperty('--escala-entrada', String(escala));
+    } finally { ocupado = false; }
+  }
+  var agendado = false;
+  function agendar(){
+    if (agendado) return;
+    agendado = true;
+    requestAnimationFrame(function(){ agendado = false; ajustar(); });
+  }
+  window.addEventListener('resize', agendar);
+  window.addEventListener('load', agendar);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(agendar);
+  var card = tela.querySelector('.action-card');
+  if (card && window.MutationObserver){
+    new MutationObserver(agendar).observe(card, { subtree: true, childList: true, attributes: true, characterData: true });
+  }
+  ajustar();
 })();
 </script>
 </body>
