@@ -1,7 +1,7 @@
 <!--
 ================================================================================
   Finanças.DuC — index.html
-  Versão atual: V00.042  (ver <title> na linha 6)
+  Versão atual: V00.045  (ver <title> na linha 6)
 
   🔗 LINK DO APP (GitHub Pages):
       https://ductrabalho.github.io/Financas.DuC/
@@ -19,11 +19,11 @@
   ──────────────────────────────────────────────────────────────────────────────
   [HTML / ESTRUTURA]
 
-  L.1–9      │ Cabeçalho do documento
+  L.1–166    │ Cabeçalho do documento
               │   DOCTYPE, <html>, <head>, <meta>, links de fontes (Google
               │   Fonts) e tag <script> do Google Identity Services (GSI)
 
-  L.10–600   │ ESTILOS CSS  ─────────────────── bloco <style> ───────────────
+  L.180–765  │ ESTILOS CSS  ─────────────────── bloco <style> ───────────────
               │   :root       – variáveis de cor e tipografia
               │   body/.wrap  – layout geral
               │   header/h1   – cabeçalho, logo, versão, subtítulo
@@ -47,16 +47,19 @@
               │   .resumo-* / .barra-*
               │               – gráfico de barras do Resumo
               │   .lembrete-* – itens da lista de Lembretes
+              │   #splash     – tela de carregamento (logo única, fica
+              │                 permanentemente na tela; ver JS mais abaixo)
               │   #tela-entrada / .bg-orb / .logo-grande / .login-*
-              │               – tela de login / provisionamento
+              │               – tela de login / provisionamento (cascata de
+              │                 fade-in escalonada: subtítulo → tag → card →
+              │                 conteúdo do card)
               │   .tela-sec   – telas secundárias (centralização vertical)
 
-  L.602–609  │ OVERLAY DE CARREGAMENTO (HTML)
-              │   Div fixa com spinner, texto e botão "Cancelar"
+  L.766–862  │ OVERLAY DE CARREGAMENTO + TELA DE ENTRADA (HTML)
 
-  L.610–920  │ BLOCO PRINCIPAL  ──────── div.wrap ──────────────────────────
+  L.879–1225 │ BLOCO PRINCIPAL  ──────── div.wrap ──────────────────────────
               │
-              │   L.613–704   MODAL DE CONFIGURAÇÕES
+              │   MODAL DE CONFIGURAÇÕES
               │               • Aba "Banco de Dados":
               │                   – Config automática via Google (btn-config-auto)
               │                   – Config manual (bloco-manual, URL do Apps Script)
@@ -71,32 +74,33 @@
               │                   – Botão copiar URL de importação
               │                   – Instruções passo a passo
               │
-              │   L.706–920   TELAS / PÁGINAS
+              │   TELAS / PÁGINAS
               │               • #tela-entrada  – tela de login/provisioning
-              │                   (logo, botão Google, opção manual,
-              │                    tela de loading/passos do login)
-              │               • (restante do wrap: app-conectado — header +
-              │                  cards + abas é renderizado dinamicamente
-              │                  via JS, o HTML estático está nesse bloco)
+              │                   (logo-grande vazia — a logo real vive em
+              │                    #splash e nunca é movida para aqui —,
+              │                    botão Google, opção manual, tela de
+              │                    loading/passos do login)
+              │               • #app-conectado – header (logo pequena,
+              │                   populada via FLIP quando o usuário entra)
+              │                  + cards + abas, renderizado via JS
 
   ──────────────────────────────────────────────────────────────────────────────
-  [JAVASCRIPT]  ──────────── bloco <script>  L.923–2595 ─────────────────────
+  [JAVASCRIPT]  ──────────── dois blocos <script>: L.863–879 e L.1229–3126 ────
 
-  L.924–949  │ CONFIGURAÇÃO GLOBAL
+  L.1231–1271│ CONFIGURAÇÃO GLOBAL + REFERÊNCIAS DOM BÁSICAS
               │   API_URL, diaReferenciaAtual, categoriasCache
-              │   GOOGLE_CLIENT_ID, GOOGLE_SCOPES
+              │   GOOGLE_CLIENT_ID, GOOGLE_SCOPES, APP_VERSAO
               │   diasReferenciaPredefinidos
 
-  L.951–982  │ REFERÊNCIAS DOM + FUNÇÕES UTILITÁRIAS BÁSICAS
-              │   elInicio, elFim, modalConfig, inputConfigUrl
+  L.1273–1301│ FUNÇÕES UTILITÁRIAS BÁSICAS
               │   formatarISOLocal(), calcularPeriodoPadrao()
               │   formatarMoeda(), formatarDataBR()
 
-  L.984–1042 │ OVERLAY DE CARREGAMENTO + chamarAPI()
+  L.1302–1363│ OVERLAY DE CARREGAMENTO + chamarAPI()
               │   bloquearTeclas(), mostrarLoading(), esconderLoading()
               │   chamarAPI() — wrapper de fetch com suporte a loading/abort
 
-  L.1043–1552│ CÓDIGO DO BACKEND  (string CODE_GS — conteúdo do Code.gs)
+  L.1364–1915│ CÓDIGO DO BACKEND  (string CODE_GS — conteúdo do Code.gs)
               │   ⚠️  NÃO EDITAR esta seção sem necessidade — é uma string
               │       literal copiada para o Apps Script do usuário.
               │   • Variáveis de nome das abas da planilha
@@ -109,7 +113,7 @@
               │     Configurações, Importação por notificação,
               │     Geração automática mensal
 
-  L.1554–1936│ CONFIGURAÇÃO AUTOMÁTICA VIA GOOGLE (OAuth / provisioning)
+  L.1916–2223│ CONFIGURAÇÃO AUTOMÁTICA VIA GOOGLE (OAuth / provisioning)
               │   inicializarGoogleAuth(), obterToken()
               │   buscarPlanilhaExistente(), buscarScriptVinculado(),
               │   buscarDeployAtivo(), criarSpreadsheet(), criarScript(),
@@ -117,50 +121,56 @@
               │   atualizarStatusEntrada(), salvarProvisionamentoPendente(),
               │   obterProvisionamentoPendente()
 
-  L.1937–2025│ TELA INICIAL — ENTRAR / CRIAR CONTA
-              │   mostrarTela(), renderDiaReferencia()
-              │   Lógica da tela de entrada: botão Google, URL manual,
-              │   salvarURL(), botão de entrar
+  L.2224–2302│ TELA INICIAL — ENTRAR / CRIAR CONTA
+              │   mostrarTela() — também dispara moverLogoParaHeader() quando
+              │   a transição é da tela de login direto para o app conectado
+              │   moverLogoParaHeader() — anima (técnica FLIP) a MESMA <img>
+              │   da logo do #splash até o tamanho/posição do header, sem
+              │   nunca duplicar o elemento
 
-  L.2026–2151│ MESCLAGEM DE PLANILHAS DO BANCO DE DADOS
+  L.2303–2325│ TELA INICIAL — utilitários de status
+
+  L.2326–2378│ LOGIN UNIFICADO
+              │   tratarLoginUnificado() — entrar/criar conta fazem a mesma
+              │   coisa: login + busca no Drive; sem planilhas, cria direto
+
+  L.2379–2504│ MESCLAGEM DE PLANILHAS DO BANCO DE DADOS
               │   buscarPlanilhasFinancasDuC(), funções de merge de dados
 
-  L.2152–2168│ MODAL DE CONFIGURAÇÕES — listeners de abertura/fechamento
+  L.2505–2521│ MODAL DE CONFIGURAÇÕES — listeners de abertura/fechamento
 
-  L.2169–2225│ HEADER NOVO (menu +, logout, dropdown)
-              │   Lógica do botão "+" (abrir dropdown: Despesa / Receita)
-              │   Lógica do botão de logout
+  L.2522–2578│ HEADER (menu +, logout, dropdown)
 
-  L.2226–2282│ CATEGORIAS — renderização e gestão
-              │   carregarCategorias(), renderCategorias()
-              │   Listeners dos botões "Adicionar" e remoção de chips
+  L.2579–2635│ CATEGORIAS — renderização e gestão
 
-  L.2283–2311│ DIA DE REFERÊNCIA — grade de opções
-              │   renderDiaReferencia(), salvarDiaReferencia()
+  L.2636–2696│ DIA DE REFERÊNCIA — grade de opções
 
-  L.2312–2331│ IMPORTAÇÃO POR NOTIFICAÇÃO — botão "Copiar URL"
-
-  L.2332–2343│ ABAS PRINCIPAIS — lógica de troca de aba
-
-  L.2344–2367│ CARREGAMENTO GERAL
+  L.2697–2752│ CARREGAMENTO GERAL + CARDS
               │   carregarTudo() — chama todas as funções de render
-              │   carregarCategorias()
 
-  L.2368–2428│ TRANSAÇÕES
+  L.2753–2802│ TRANSAÇÕES
               │   renderTransacoes(lista) — monta tabela, botão apagar
 
-  L.2429–2449│ IMPORTAR CSV
-              │   Listener do input file, parse e envio linha a linha
-
-  L.2450–2496│ RESUMO
+  L.2803–2849│ RESUMO
               │   renderResumoTab(r), barraLinha()
 
-  L.2497–2560│ LEMBRETES
+  L.2850–2913│ LEMBRETES
               │   formLembrete, renderLembretes(lista)
-              │   Listeners: novo lembrete, cancelar, submit, alternar status
 
-  L.2561–2595│ INICIALIZAÇÃO
+  L.2914–2932│ INICIALIZAÇÃO PÓS-CONEXÃO
               │   aposConectarAPI() — fluxo pós-conexão bem-sucedida
+
+  L.2933–3020│ ATUALIZAÇÃO AUTOMÁTICA
+              │   checarAtualizacao() — busca versão nova e recarrega quando
+              │   o usuário está livre (não digitando, sem modal aberto)
+
+  L.3021–3126│ SPLASH — fluxo de saída e entrada na tela de login
+              │   INICIO_CASCATA_MS — a cascata de fade-in (subtítulo → tag
+              │   → card → conteúdo) é disparada no exato instante em que a
+              │   logo começa a esmaecer para dentro, em passos iguais de
+              │   .15s entre si
+              │   esconderSplash() — dispara a cascata; a splash em si NUNCA
+              │   é removida da tela
               │   IIFE iniciar() — ponto de entrada da aplicação
   ──────────────────────────────────────────────────────────────────────────────
 -->
@@ -169,7 +179,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Finanças.DuC V00.042</title>
+<title>Finanças.DuC V00.045</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://accounts.google.com/gsi/client" async defer onload="inicializarGoogleAuth()"></script>
@@ -206,7 +216,6 @@
   h1 .tick{ color: var(--amber); }
   .h1-financas{ display:flex; align-items:baseline; gap: 0px; }
   .h1-nome{ color: var(--text); }
-  .h1-logo{ height: 0.72em; width: auto; display:block; }
   .h1-versao{ font-family: 'JetBrains Mono', monospace; font-size: 0.95rem; font-weight: 500; color: #c4c8cf; letter-spacing: 0.04em; align-self: flex-end; padding-bottom: 6px; margin-left: -10px; }
   .subtitulo{ color: var(--text-dim); font-size: 0.85rem; margin-top: -2px; margin-left: 4px; }
 
@@ -599,12 +608,17 @@
 
   /* ===== Layout D — tela de entrada em tela cheia imersiva ===== */
   #tela-entrada{
+    /* Ocupa exatamente a altura da tela (sem rolagem desnecessária).
+       As margens negativas anulam o padding do .wrap; o padding
+       80px/24px mantém o conteúdo na mesma posição vertical de antes. */
+    box-sizing: border-box;
     min-height: 100vh;
+    margin: -28px -20px -80px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 0 24px 140px;
+    padding: 80px 24px 24px;
     position: relative;
     z-index: 10000; /* acima do #splash (9999): aparece por cima dele,
                         sem precisar que a splash saia da tela */
@@ -622,38 +636,48 @@
   #tela-entrada .logo-grande{
     text-align: center;
     line-height: 1;
-    /* Reserva o mesmo espaço que a logo ocupava quando estava aqui,
+    /* Reserva o mesmo espaço que a logo ocupava quando ainda vivia aqui,
        usando a proporção real da imagem (760×149px ≈ 5.1:1), mais uma
        margem extra ajustada visualmente pelo usuário, para que o
        restante da tela (subtítulo, tag, card) fique na posição exata
-       que ele aprovou. */
+       que ele aprovou. Fica sempre vazia: a logo real vive em #splash
+       e nunca é movida para dentro dela. */
     width: min(340px, 90%);
     aspect-ratio: 5.1 / 1;
     margin: 0 auto 82px;
   }
-  #tela-entrada .logo-grande img{
-    max-width: 340px;
-    width: 90%;
-    display: block;
-    margin: 0 auto;
-  }
   #tela-entrada .logo-subtitulo,
   #tela-entrada .logo-tag,
-  #tela-entrada .action-card{
+  #tela-entrada .action-card,
+  #tela-entrada .action-card #login-default-content{
     opacity: 0;
     transform: translateY(8px);
+    /* Todos os elementos têm a MESMA duração de esmaecimento (.6s). O que
+       muda entre eles é só o delay, escalonado em passos IGUAIS (.15s),
+       de modo que cada um começa a aparecer .15s depois do início do
+       fade-in do anterior — não depois dele terminar. */
     transition: opacity .6s ease, transform .6s ease;
   }
+  /* O conteúdo do card (texto + botão) some por padrão mesmo antes do
+     card "revelado" aparecer, para poder surgir DEPOIS do quadrado
+     vazio do card, não junto com ele. */
+  #tela-entrada .action-card #login-default-content{ opacity: 0; }
+
   #tela-entrada.revelada .logo-subtitulo{
     opacity: 1; transform: none;
+    transition-delay: .15s; /* .15s depois do início do fade-in da logo */
   }
   #tela-entrada.revelada .logo-tag{
     opacity: 1; transform: none;
-    transition-delay: .1s;
+    transition-delay: .30s; /* .15s depois do início do fade-in do subtítulo */
   }
   #tela-entrada.revelada .action-card{
     opacity: 1; transform: none;
-    transition-delay: .2s;
+    transition-delay: .45s; /* .15s depois do início do fade-in da tag */
+  }
+  #tela-entrada.revelada .action-card #login-default-content{
+    opacity: 1; transform: none;
+    transition-delay: .60s; /* .15s depois do início do fade-in do card */
   }
   #tela-entrada .logo-subtitulo{
     color: var(--text-dim);
@@ -753,23 +777,15 @@
   }
 
   /* ── SPLASH DE ABERTURA ─────────────────────────────────────────
-     Aparece enquanto o app carrega de verdade e sai assim que estiver
-     pronto. Não atrasa nada de propósito: se o carregamento for rápido,
-     a splash apenas pisca; se for lento (ex.: retorno da autorização),
-     ela preenche a espera.
+     Fica visível o tempo todo (não esmaece nem é removida). A tela de
+     login aparece por cima dela, com fade-in próprio, dando a impressão
+     de que a logo nunca saiu do lugar.
 
-     ALINHAMENTO: a logo aqui fica na MESMA posição e tamanho da logo da
-     tela "Tudo pronto!" gerada pelo doGet() no Apps Script. Assim, ao vir
-     daquela tela, a logo não "salta" — parece que continuou parada.
-     Medidas espelhadas: width min(72vw,290px), centro vertical em 317px
-     numa viewport de 844px, ou seja ~37.6% da altura.
-
-     DOIS MODOS:
-       • Entrada direta  → classe .com-fade  : logo entra esmaecendo
-       • Vindo da imagem 1 → classe .sem-fade : logo já começa visível
-     Em ambos a saída é esmaecendo (.saindo). */
+     DOIS MODOS de entrada da logo:
+       • Entrada direta      → classe .com-fade : logo entra esmaecendo
+       • Vindo da autorização → classe .sem-fade : logo já começa visível */
   #splash{
-    position: fixed; inset: 0; z-index: 9999;
+    position: absolute; top: 0; left: 0; width: 100%; height: 100vh; z-index: 9999;
     background: var(--bg);
     display: flex; flex-direction: column;
     align-items: center;
@@ -780,48 +796,34 @@
     justify-content: flex-start;
     padding-top: 20vh;
     gap: 26px;
-    transition: opacity .45s ease;
   }
-  #splash.saindo{ opacity: 0; pointer-events: none; }
-  #splash img, #tela-entrada .logo-grande img{
+  #splash img{
     max-width: 340px;
     width: 90%;
     height: auto;
     display: block;
     margin: 0 auto;
   }
-  #splash .splash-txt{
-    font-size: .95rem;
-    letter-spacing: .16em;
-    text-transform: uppercase;
-    color: var(--text-dim);
-  }
 
-  /* Modo 1 — entrada direta: entra esmaecendo */
+  /* Modo 1 — entrada direta: logo entra esmaecendo, vindo de um pouco
+     mais abaixo (5mm) e subindo enquanto aparece. O atraso inicial (.6s)
+     é o tempo em preto total antes da logo começar a aparecer. */
   #splash.com-fade img{
     opacity: 0;
-    transform: scale(.94);
-    animation: splashLogo .75s cubic-bezier(.2,.7,.3,1) forwards;
-  }
-  #splash.com-fade .splash-txt{
-    opacity: 0;
-    animation: splashTxt .6s ease .35s forwards;
+    transform: scale(.94) translateY(5mm);
+    animation: splashLogo .75s cubic-bezier(.2,.7,.3,1) .6s forwards;
   }
 
   /* Modo 2 — vindo da tela de autorização: já começa visível,
      para dar a impressão de que a logo nunca saiu da tela. */
   #splash.sem-fade img{ opacity: 1; transform: none; }
-  #splash.sem-fade .splash-txt{ opacity: .85; }
 
   @keyframes splashLogo{
-    to{ opacity: 1; transform: scale(1); }
-  }
-  @keyframes splashTxt{
-    to{ opacity: .85; }
+    to{ opacity: 1; transform: scale(1) translateY(0); }
   }
   /* Respeita quem pediu menos animação no sistema */
   @media (prefers-reduced-motion: reduce){
-    #splash.com-fade img, #splash.com-fade .splash-txt{
+    #splash.com-fade img{
       animation-duration: .01s; opacity: 1;
     }
   }
@@ -857,12 +859,14 @@
   
   /* Telas secundárias de entrada: centralização vertical igual à tela-entrada */
   .tela-sec{
+    box-sizing: border-box;
     min-height: 100vh;
+    margin: -28px -20px -80px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 0 24px 140px;
+    padding: 80px 24px 24px;
   }
 
   </style>
@@ -871,7 +875,7 @@
 
 <!-- Splash de abertura: some assim que o app termina de carregar -->
 <div id="splash">
-  <img src="https://ductrabalho.github.io/Financas.DuC/logo.png" alt="Finanças.DuC">
+  <img src="logo.png" alt="Finanças.DuC">
 </div>
 <script>
   /* Decide o modo da splash ANTES da primeira pintura, para não haver
@@ -1041,7 +1045,7 @@
       var splash = document.getElementById('splash');
       var subtitulo = document.querySelector('#tela-entrada .logo-subtitulo');
       if (!splash || !subtitulo) return;
-      var topoSubtitulo = subtitulo.getBoundingClientRect().top;
+      var topoSubtitulo = subtitulo.getBoundingClientRect().top + (window.scrollY || 0);
       var padding = topoSubtitulo - MARGEM_LOGO_ACIMA_SUBTITULO;
       splash.style.paddingTop = Math.max(0, padding) + 'px';
     }
@@ -1063,7 +1067,7 @@
 
   <div id="tela-mesclagem" class="oculto tela-sec">
     <div class="entrada-caixa">
-      <p class="entrada-texto">Encontramos mais de uma planilha do banco de dados na sua conta Google. Escolha quais deseja unir em uma única planilha.</p>
+      <p class="entrada-texto">Encontramos mais de uma planilha "Finanças.DuC" na sua conta Google. Escolha quais deseja unir em uma única planilha.</p>
       <div id="lista-mesclagem" class="lista-mesclagem"></div>
       <button class="full" id="btn-mesclagem-confirmar">Unir selecionadas</button>
       <button class="full secundario" id="btn-mesclagem-cancelar" style="margin-top:10px;">Cancelar</button>
@@ -1255,10 +1259,6 @@ const GOOGLE_CLIENT_ID = "14329074132-qb4tc07suauqffs40qai2t5a791pad1e.apps.goog
 const APP_VERSAO = (document.title.match(/V[\d.]+/) || ['V00.000'])[0];
 
 
-
-// Nome usado para a planilha (banco de dados) e o projeto Apps Script.
-// Trocar aqui muda em todos os lugares.
-const NOME_PLANILHA = 'Finanças.DuC-Banco_dados';
 
 const GOOGLE_SCOPES = [
   'https://www.googleapis.com/auth/spreadsheets',
@@ -1972,16 +1972,16 @@ function solicitarLogin(callback){
   tokenClient.requestAccessToken();
 }
 
-function atualizarStatusElemento(el, tipo, texto){ // ALTERADO
+function atualizarStatusElemento(el, tipo, texto){
   el.classList.remove('oculto');
   el.className = 'status-auto status-' + tipo;
   el.textContent = texto;
 }
 function atualizarStatusAuto(tipo, texto){
-  atualizarStatusElemento(elStatusAuto, tipo, texto); // ALTERADO
+  atualizarStatusElemento(elStatusAuto, tipo, texto);
 }
 
-function mostrarSucessoComUrl(url, el = elStatusAuto){ // ALTERADO
+function mostrarSucessoComUrl(url, el = elStatusAuto){
   el.classList.remove('oculto');
   el.className = 'status-auto status-sucesso';
   el.innerHTML = `
@@ -2004,7 +2004,7 @@ function mostrarSucessoComUrl(url, el = elStatusAuto){ // ALTERADO
   });
 }
 
-async function mostrarAvisoComUrl(url, el = elStatusAuto){ // ALTERADO
+async function mostrarAvisoComUrl(url, el = elStatusAuto){
   atualizarStatusElemento(el, 'info', '5/6 — Verificando autorização...');
   const teste = await fetch(url + '?action=obterConfiguracoes').then(r => r.json()).catch(() => null);
   if (teste && teste.ok){
@@ -2016,20 +2016,15 @@ async function mostrarAvisoComUrl(url, el = elStatusAuto){ // ALTERADO
   } else {
     el.classList.remove('oculto');
     el.className = 'status-auto status-aviso';
-    el.innerHTML = `\u26a0\ufe0f Autoriza\u00e7\u00e3o necess\u00e1ria. Clique abaixo para abrir a p\u00e1gina do Google, aceite TODOS os acessos pedidos \u2014 voc\u00ea volta pra c\u00e1 automaticamente.<br><div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;"><button type="button" id="btn-abrir-autorizacao-manual">Abrir autoriza\u00e7\u00e3o</button></div>`; // ALTERADO
-    document.getElementById('btn-abrir-autorizacao-manual').addEventListener('click', () => {
-      // Mesma aba: evita popup bloqueado e abas órfãs no mobile.
-      localStorage.setItem('duc_financas_auth_pendente', '1');
-      location.href = url;
-    });
+    el.innerHTML = `\u26a0\ufe0f Autoriza\u00e7\u00e3o necess\u00e1ria. Clique abaixo para abrir a p\u00e1gina do Google em nova aba, aceite todos os acessos pedidos e volte aqui \u2014 a conex\u00e3o \u00e9 verificada automaticamente.<br><div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;"><button type="button" id="btn-abrir-autorizacao-manual">Abrir autoriza\u00e7\u00e3o</button></div>`;
+    document.getElementById('btn-abrir-autorizacao-manual').addEventListener('click', () => { window.__abaAutorizacaoDuC = window.open(url, 'ducAuth', 'width=600,height=700'); });
+    aguardarAutorizacaoEmSegundoPlano(url, el);
   }
 }
 
 // Fica testando a conexão em segundo plano enquanto o usuário resolve a
 // autorização na outra aba. Quando a aba volta a ficar visível (ou a cada
 // poucos segundos) testa de novo; ao dar certo, segue pro passo 6 sozinho.
-// ⚠️ OBSOLETA desde V00.033 — era usada no fluxo de popup/aba nova.
-// Mantida apenas por segurança; o fluxo atual usa aba única (location.href).
 function aguardarAutorizacaoEmSegundoPlano(url, el = elStatusAuto){
   if (window.__aguardandoAutorizacaoDuC) return; // já tem um monitor rodando
   window.__aguardandoAutorizacaoDuC = true;
@@ -2066,7 +2061,7 @@ function aguardarAutorizacaoEmSegundoPlano(url, el = elStatusAuto){
       API_URL = url;
       localStorage.setItem('duc_financas_api_url', url);
       limparProvisionamentoPendente();
-      mostrarSucessoComUrl(url, el); // ALTERADO
+      mostrarSucessoComUrl(url, el);
       await aposConectarAPI();
       return true;
     }
@@ -2087,27 +2082,45 @@ function aguardarAutorizacaoEmSegundoPlano(url, el = elStatusAuto){
   })();
 }
 
-async function aguardarConexaoEFinalizar(url, statusFn = atualizarStatusAuto, el = elStatusAuto){ // ALTERADO
+async function aguardarConexaoEFinalizar(url, statusFn = atualizarStatusAuto, el = elStatusAuto){
   // ── Etapa 5: abrir a página de autorização do Google e esperar o aceite ──
-  // ── Primeiro testa: se já está autorizado, nem precisa redirecionar ──
-  const testePrevio = await fetch(url + '?action=obterConfiguracoes').then(r => r.json()).catch(() => null);
-  if (testePrevio && testePrevio.ok){
+  statusFn('info', '5/6 — Abrindo a página de autorização. Aceite TODOS os acessos que o Google pedir e depois volte pra esta aba...');
+  const abaAutorizacao = window.open(url, 'ducAuth', 'width=600,height=700');
+  window.__abaAutorizacaoDuC = abaAutorizacao;
+  if (!abaAutorizacao){
+    // Popup bloqueado pelo navegador: mostra o aviso com botão "Continuar" (gesto do usuário)
+    // e deixa o monitor em segundo plano finalizar quando a autorização for concluída.
+    mostrarAvisoComUrl(url, el);
+    return;
+  }
+
+  statusFn('info', '6/6 — Testando a conexão (pode levar até 1 minuto na primeira vez)...');
+  let teste = null;
+  for (let tentativa = 0; tentativa < 6 && !(teste && teste.ok); tentativa++){
+    await new Promise(r => setTimeout(r, 6000));
+    teste = await fetch(url + '?action=obterConfiguracoes').then(r => r.json()).catch(() => null);
+  }
+  if (teste && teste.ok){
+    // ── Fechar a aba de autorização automaticamente ──
+    // Navega a aba para uma data URL que executa window.close() — o método
+    // mais confiável no mobile Chrome mesmo com origem diferente
+    try {
+      if (abaAutorizacao && !abaAutorizacao.closed){
+        abaAutorizacao.location.href = 'data:text/html,<scr'+'ipt>window.close()<\/scr'+'ipt>';
+        setTimeout(()=>{ try{ abaAutorizacao.close(); }catch(e){} }, 800);
+      }
+    } catch(e){
+      try { window.open('about:blank','ducAuth').close(); } catch(e2){}
+    }
+    window.__abaAutorizacaoDuC = null;
     API_URL = url;
     localStorage.setItem('duc_financas_api_url', url);
     limparProvisionamentoPendente();
     mostrarSucessoComUrl(url, el);
     await aposConectarAPI();
-    return;
+  } else {
+    mostrarAvisoComUrl(url, el);
   }
-
-  // ── Ainda não autorizado: navega a PRÓPRIA aba para a autorização ──
-  // Usar a mesma aba (em vez de window.open) evita popup bloqueado e abas
-  // órfãs que não podem ser fechadas por script — problema comum no mobile.
-  // O estado fica salvo no localStorage e o fluxo é retomado em iniciar().
-  statusFn('info', '5/6 — Abrindo a autorização do Google. Aceite TODOS os acessos pedidos — você volta pra cá automaticamente.');
-  localStorage.setItem('duc_financas_auth_pendente', '1');
-  await new Promise(r => setTimeout(r, 1200)); // deixa o usuário ler o aviso
-  location.href = url;
 }
 
 if (elBtnAuto) elBtnAuto.addEventListener('click', async () => {
@@ -2189,7 +2202,7 @@ async function buscarDeployAtivo(scriptId){
   return null;
 }
 
-async function rodarProvisionamento(spreadsheetIdExistente, statusFn = atualizarStatusAuto, el = elStatusAuto){ // ALTERADO
+async function rodarProvisionamento(spreadsheetIdExistente, statusFn = atualizarStatusAuto, el = elStatusAuto){
   try {
     let pendente = obterProvisionamentoPendente() || {};
     if (spreadsheetIdExistente && pendente.spreadsheetId !== spreadsheetIdExistente){
@@ -2198,44 +2211,44 @@ async function rodarProvisionamento(spreadsheetIdExistente, statusFn = atualizar
     }
 
     // ── Etapa 0: validar via API se o que está salvo ainda existe ──
-    statusFn('info', '1/6 — Verificando se já existe um banco de dados configurado...'); // ALTERADO
+    statusFn('info', '1/6 — Verificando se já existe um banco de dados configurado...');
     if (pendente.spreadsheetId){
       const ainda = await validarPlanilhaExistente(pendente.spreadsheetId);
       if (!ainda){
         // ID salvo não existe mais (deletado) — recomeça do zero
         pendente = {};
         limparProvisionamentoPendente();
-        statusFn('info', '1/6 — Banco anterior não encontrado. Criando novo...'); // ALTERADO
+        statusFn('info', '1/6 — Banco anterior não encontrado. Criando novo...');
       } else {
-        statusFn('info', '1/6 — Banco de dados já existente encontrado — reutilizando.'); // ALTERADO
+        statusFn('info', '1/6 — Banco de dados já existente encontrado — reutilizando.');
       }
     }
 
     // ── Etapa 1: criar planilha só se não existe ──
     if (!pendente.spreadsheetId){
-      statusFn('info', '2/6 — Criando sua planilha no Google Sheets...'); // ALTERADO
+      statusFn('info', '2/6 — Criando sua planilha no Google Sheets...');
       const planilha = await chamarGoogleAPI('https://sheets.googleapis.com/v4/spreadsheets', {
         method: 'POST',
-        body: { properties: { title: NOME_PLANILHA } }
+        body: { properties: { title: 'Finanças.DuC' } }
       });
       pendente.spreadsheetId = planilha.spreadsheetId;
       salvarProvisionamentoPendente(pendente);
     } else {
-      statusFn('info', '2/6 — Planilha já existente, reutilizando...'); // ALTERADO
+      statusFn('info', '2/6 — Planilha já existente, reutilizando...');
     }
     const spreadsheetId = pendente.spreadsheetId;
 
     // ── Etapa 2: criar script só se não existe ──
     if (!pendente.scriptId){
-      statusFn('info', '3/6 — Criando o script vinculado à planilha...'); // ALTERADO
+      statusFn('info', '3/6 — Criando o script vinculado à planilha...');
       const projeto = await chamarGoogleAPI('https://script.googleapis.com/v1/projects', {
         method: 'POST',
-        body: { title: NOME_PLANILHA, parentId: spreadsheetId }
+        body: { title: 'Finanças.DuC - Backend', parentId: spreadsheetId }
       });
       pendente.scriptId = projeto.scriptId;
       salvarProvisionamentoPendente(pendente);
     } else {
-      statusFn('info', '3/6 — Script já existente, reutilizando...'); // ALTERADO
+      statusFn('info', '3/6 — Script já existente, reutilizando...');
     }
     const scriptId = pendente.scriptId;
 
@@ -2250,7 +2263,7 @@ async function rodarProvisionamento(spreadsheetIdExistente, statusFn = atualizar
 
     // ── Etapa 3: deploy só se não existe ──
     if (!pendente.urlExec){
-      statusFn('info', '4/6 — Enviando o código e publicando como app da web...'); // ALTERADO
+      statusFn('info', '4/6 — Enviando o código e publicando como app da web...');
       const codigoComId = CODE_GS.replace("var SPREADSHEET_ID = '';", "var SPREADSHEET_ID = '" + spreadsheetId + "';");
       const manifest = {
         timeZone: 'America/Sao_Paulo',
@@ -2283,16 +2296,92 @@ async function rodarProvisionamento(spreadsheetIdExistente, statusFn = atualizar
       pendente.urlExec = urlExec;
       salvarProvisionamentoPendente(pendente);
     } else {
-      statusFn('info', '4/6 — Deploy já existente, reutilizando...'); // ALTERADO
+      statusFn('info', '4/6 — Deploy já existente, reutilizando...');
     }
 
     inputConfigUrl.value = pendente.urlExec;
-    await aguardarConexaoEFinalizar(pendente.urlExec, statusFn, el); // ALTERADO
+    await aguardarConexaoEFinalizar(pendente.urlExec, statusFn, el);
   } catch (err) {
-    statusFn('erro', '❌ Algo deu errado: ' + err.message + '. Você pode tentar de novo ou usar a configuração manual abaixo.'); // ALTERADO
+    if (ehErroApiAppsScriptDesativada(err)){
+      tratarApiAppsScriptDesativada(statusFn, el, spreadsheetIdExistente);
+    } else {
+      statusFn('erro', '❌ Algo deu errado: ' + err.message + '. Você pode tentar de novo ou usar a configuração manual abaixo.');
+    }
   } finally {
     elBtnAuto.disabled = false;
   }
+}
+
+// ---------- API do Apps Script desativada na conta ----------
+// Em vez do erro técnico do Google, mostra uma explicação simples com o
+// link de ativação. Enquanto o usuário ativa, o site tenta de novo sozinho
+// e, quando funcionar, fecha a aba de ativação e continua o login.
+const URL_ATIVAR_APPS_SCRIPT_API = 'https://script.google.com/home/usersettings';
+let monitorApiAppsScriptAtivo = false;
+
+function ehErroApiAppsScriptDesativada(err){
+  const m = String((err && err.message) || err || '');
+  return /Apps Script API/i.test(m) || /script\.google\.com\/home\/usersettings/i.test(m);
+}
+
+function tratarApiAppsScriptDesativada(statusFn, el, spreadsheetIdExistente){
+  // Já está esperando a ativação: as tentativas silenciosas não mexem na tela.
+  if (monitorApiAppsScriptAtivo) return;
+  el.classList.remove('oculto');
+  el.className = 'status-auto status-aviso';
+  el.style.textAlign = 'left';
+  el.innerHTML = `
+    <b>Falta um passo para continuar</b><br><br>
+    1. Para continuar, é preciso ativar o Google Apps Script API na conta Google que fez login.<br>
+    2. Basta abrir a página de configurações do Apps Script e ligar a opção "API Google Apps Script".<br>
+    3. Depois de ativar, esperar cerca de 2 minutos e tentar de novo.<br><br>
+    <a id="link-ativar-apps-script-api" href="${URL_ATIVAR_APPS_SCRIPT_API}" target="_blank" rel="noopener" style="color:inherit; word-break:break-all;">${URL_ATIVAR_APPS_SCRIPT_API}</a><br><br>
+    <span style="opacity:.8;">Ao ativar, o site continua sozinho.</span>`;
+  document.getElementById('link-ativar-apps-script-api').addEventListener('click', (ev) => {
+    // Guarda a referência da aba para poder fechá-la quando tudo estiver pronto.
+    const aba = window.open(URL_ATIVAR_APPS_SCRIPT_API, 'ducApiAppsScript');
+    if (aba){ ev.preventDefault(); window.__abaApiAppsScript = aba; }
+  });
+  iniciarMonitorApiAppsScript(statusFn, el, spreadsheetIdExistente);
+}
+
+function iniciarMonitorApiAppsScript(statusFn, el, spreadsheetIdExistente){
+  monitorApiAppsScriptAtivo = true;
+  let parar = false, tentando = false, confirmado = false;
+  const limite = Date.now() + 15 * 60 * 1000;
+
+  // Durante as tentativas silenciosas só repassa mensagens depois que a
+  // criação do script passou (etapas 4/6 em diante) ou se for um erro novo.
+  const statusFiltrado = (tipo, texto) => {
+    if (tipo === 'erro'){ parar = true; statusFn(tipo, texto); return; }
+    if (!confirmado && /^[456]\/6/.test(texto)){
+      confirmado = true;
+      parar = true;
+      try { if (window.__abaApiAppsScript && !window.__abaApiAppsScript.closed) window.__abaApiAppsScript.close(); } catch(e){}
+      window.__abaApiAppsScript = null;
+      el.style.textAlign = '';
+    }
+    if (confirmado) statusFn(tipo, texto);
+  };
+
+  const tentar = async () => {
+    if (parar || tentando) return;
+    if (Date.now() > limite){ parar = true; monitorApiAppsScriptAtivo = false; document.removeEventListener('visibilitychange', aoVoltar); return; }
+    tentando = true;
+    try { await rodarProvisionamento(spreadsheetIdExistente, statusFiltrado, el); }
+    finally { tentando = false; }
+    if (parar){ document.removeEventListener('visibilitychange', aoVoltar); }
+  };
+  const aoVoltar = () => { if (document.visibilityState === 'visible') tentar(); };
+  document.addEventListener('visibilitychange', aoVoltar);
+
+  (async () => {
+    while (!parar && Date.now() <= limite){
+      await new Promise(r => setTimeout(r, 8000));
+      if (document.visibilityState === 'visible') await tentar();
+    }
+    monitorApiAppsScriptAtivo = false;
+  })();
 }
 
 // ---------- Tela inicial: entrar / criar conta / mesclagem ----------
@@ -2322,6 +2411,12 @@ function mostrarTela(tela){
   } else {
     [elTelaEntrada, elTelaNaoEncontrada, elTelaMesclagem, elAppConectado].forEach(t => t.classList.add('oculto'));
     tela.classList.remove('oculto');
+    if (tela === elAppConectado) moverLogoParaHeader();
+  }
+  // Dentro do app a splash (fundo opaco) não pode ficar cobrindo a tela.
+  if (tela === elAppConectado){
+    const sp = document.getElementById('splash');
+    if (sp) sp.style.display = 'none';
   }
   elBtnConfigHeader.classList.toggle('oculto', tela !== elAppConectado);
 
@@ -2344,7 +2439,11 @@ function mostrarTela(tela){
    imagem só, o tempo todo, do início ao fim da jornada. */
 function moverLogoParaHeader(){
   try {
-    const img = document.querySelector('#tela-entrada .logo-grande img');
+    // A logo vive dentro do #splash (que hoje permanece na tela, não é
+    // mais removido nem move a imagem para a tela de login) — por isso
+    // busca-se ela ali, e não em '#tela-entrada .logo-grande img' como
+    // antes.
+    const img = document.querySelector('#splash img');
     const destino = document.querySelector('#app-conectado .logo');
     if (!img || !destino) return;
 
@@ -2372,12 +2471,12 @@ function moverLogoParaHeader(){
 }
 
 function atualizarStatusEntrada(tipo, texto){
-  atualizarStatusElemento(elStatusEntrada, tipo, texto); // ALTERADO
+  atualizarStatusElemento(elStatusEntrada, tipo, texto);
 }
 
 async function buscarPlanilhasFinancasDuC(){
   const params = new URLSearchParams({
-    q: `name = '${NOME_PLANILHA}' and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false`,
+    q: "name = 'Finanças.DuC' and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false",
     fields: 'files(id,name,modifiedTime)',
     orderBy: 'modifiedTime desc'
   });
@@ -2385,18 +2484,18 @@ async function buscarPlanilhasFinancasDuC(){
   return r.files || [];
 }
 
-async function conectarNaPlanilha(spreadsheetId, statusFn = atualizarStatusAuto, el = elStatusAuto){ // ALTERADO
-  await rodarProvisionamento(spreadsheetId, statusFn, el); // ALTERADO
+async function conectarNaPlanilha(spreadsheetId, statusFn = atualizarStatusAuto, el = elStatusAuto){
+  await rodarProvisionamento(spreadsheetId, statusFn, el);
 }
 
-// ALTERADO: tratarLoginEntrar e tratarLoginCriarConta foram unificados em
+// tratarLoginEntrar e tratarLoginCriarConta foram unificados em
 // tratarLoginUnificado, seguindo fluxo_login_.png — os dois botões agora
 // fazem exatamente a mesma coisa (login + busca no Drive), e quando 0
 // planilhas são encontradas a criação roda direto (igual à v00.015),
 // mostrando os passos 0/4..4/4 na própria tela de entrada.
 async function tratarLoginUnificado(token, erro){
   if (erro){ atualizarStatusEntrada('erro', '❌ Permissão não concedida (' + erro + ').'); return; }
-  atualizarStatusEntrada('info', `Procurando suas planilhas "${NOME_PLANILHA}" no Google Drive...`);
+  atualizarStatusEntrada('info', 'Procurando suas planilhas "Finanças.DuC" no Google Drive...');
   try {
     const arquivos = await buscarPlanilhasFinancasDuC();
     if (arquivos.length === 0){
@@ -2438,7 +2537,7 @@ document.getElementById('btn-entrar-google').addEventListener('click', () => {
 document.getElementById('btn-nao-encontrada-criar').addEventListener('click', async () => {
   mostrarTela(elTelaEntrada);
   atualizarStatusEntrada('info', 'Criando sua conta...');
-  try { await rodarProvisionamento(undefined, atualizarStatusEntrada, elStatusEntrada); } // ALTERADO
+  try { await rodarProvisionamento(undefined, atualizarStatusEntrada, elStatusEntrada); }
   catch (err) { atualizarStatusEntrada('erro', '❌ Algo deu errado: ' + err.message); }
 });
 document.getElementById('btn-nao-encontrada-voltar').addEventListener('click', () => {
@@ -2446,7 +2545,7 @@ document.getElementById('btn-nao-encontrada-voltar').addEventListener('click', (
   elStatusEntrada.classList.add('oculto');
 });
 
-// ---------- Mesclagem de planilhas do banco de dados ----------
+// ---------- Mesclagem de planilhas "Finanças.DuC" ----------
 let arquivosParaMesclar = [];
 
 function formatarDataHoraBR(iso){
@@ -2461,7 +2560,7 @@ function abrirTelaMesclagem(arquivos){
     <label class="item-mesclagem">
       <input type="checkbox" class="check-mesclagem" value="${a.id}" checked>
       <div class="item-mesclagem-info">
-        <span class="item-mesclagem-nome">${a.name || NOME_PLANILHA}</span>
+        <span class="item-mesclagem-nome">Finanças.DuC</span>
         <span class="item-mesclagem-data">Modificada em ${formatarDataHoraBR(a.modifiedTime)}</span>
       </div>
     </label>
@@ -2522,7 +2621,7 @@ document.getElementById('btn-mesclagem-confirmar').addEventListener('click', asy
   try {
     if (idsSelecionados.length === 1){
       atualizarStatusMesclagem('info', 'Conectando na planilha selecionada...');
-      await conectarNaPlanilha(idsSelecionados[0], atualizarStatusMesclagem, document.getElementById('status-mesclagem')); // ALTERADO
+      await conectarNaPlanilha(idsSelecionados[0], atualizarStatusMesclagem, document.getElementById('status-mesclagem'));
       return;
     }
     atualizarStatusMesclagem('info', 'Lendo os dados das planilhas selecionadas...');
@@ -2535,7 +2634,7 @@ document.getElementById('btn-mesclagem-confirmar').addEventListener('click', asy
     atualizarStatusMesclagem('info', 'Criando a nova planilha unificada...');
     const novaPlanilha = await chamarGoogleAPI('https://sheets.googleapis.com/v4/spreadsheets', {
       method: 'POST',
-      body: { properties: { title: NOME_PLANILHA }, sheets: Object.keys(abasUnificadas).map(t => ({ properties: { title: t } })) }
+      body: { properties: { title: 'Finanças.DuC' }, sheets: Object.keys(abasUnificadas).map(t => ({ properties: { title: t } })) }
     });
     const novoId = novaPlanilha.spreadsheetId;
 
@@ -3087,12 +3186,9 @@ async function checarAtualizacao(){
 }
 
 // ── SPLASH: esconder ────────────────────────────────────────────
-// Chamada quando o app está pronto. Garante um tempo mínimo visível
-// (para não dar um "flash" desagradável) mas nunca atrasa além disso.
+// A tela de login aparece por cima do splash sincronizada com a
+// animação de entrada da logo (ver INICIO_CASCATA_MS mais abaixo).
 const SPLASH_INICIO = Date.now();
-const SPLASH_MIN_MS = 800; // > duração da animação de entrada (.75s), para o
-                            // FLIP medir a logo já no estado final (scale(1)),
-                            // não no meio da animação de entrada
 let splashJaSaiu = false;
 
 // Promessa que resolve quando a imagem da logo terminou de carregar.
@@ -3107,6 +3203,15 @@ const splashLogoPronta = new Promise((resolver) => {
   setTimeout(resolver, 2500); // teto de espera
 });
 
+// A cascata de entrada (subtítulo → tag → card → conteúdo do card) é
+// disparada (via classe .revelada) no exato instante em que a logo
+// começa a esmaecer para dentro (mesmo momento do delay da animação
+// splashLogo, hoje .6s). A partir daí, cada elemento tem seu próprio
+// transition-delay em passos iguais de .15s, então o subtítulo começa
+// .15s depois do INÍCIO do fade-in da logo — não depois dela terminar —
+// e assim por diante, no mesmo ritmo, até o conteúdo do card.
+const INICIO_CASCATA_MS = 600;
+
 async function esconderSplash(){
   if (splashJaSaiu) return;
   splashJaSaiu = true;
@@ -3114,47 +3219,16 @@ async function esconderSplash(){
   if (!el) return;
   await splashLogoPronta;
   const decorrido = Date.now() - SPLASH_INICIO;
-  const esperar = Math.max(0, SPLASH_MIN_MS - decorrido);
+
+  const tempoRevelarLogin = el.classList.contains('sem-fade')
+    ? 0
+    : Math.max(0, INICIO_CASCATA_MS - decorrido);
   setTimeout(() => {
     // O splash permanece na tela (não esmaece nem é removido) — a tela
     // de login aparece por cima dele, com sua própria animação de
     // entrada, dando a impressão de continuidade com a logo do splash.
     document.getElementById('tela-entrada').classList.add('revelada');
-  }, esperar);
-}
-
-/* Move a MESMA tag <img> da splash para dentro da tela de login (em vez
-   de deixar duas imagens separadas — uma esmaecendo, outra aparecendo
-   por baixo). Como é o mesmo elemento, não há "troca" de imagem: ela
-   continua sendo a mesma logo, só muda de tamanho/posição — e essa
-   mudança é animada via técnica FLIP (First-Last-Invert-Play). */
-function moverLogoParaLogin(splashEl){
-  try {
-    const img = splashEl.querySelector('img');
-    const destino = document.querySelector('#tela-entrada .logo-grande');
-    if (!img || !destino) return;
-
-    const antes = img.getBoundingClientRect();
-    destino.appendChild(img);
-    const depois = img.getBoundingClientRect();
-
-    const escalaX = antes.width / depois.width;
-    const escalaY = antes.height / depois.height;
-    const deltaX = antes.left + antes.width / 2 - (depois.left + depois.width / 2);
-    const deltaY = antes.top + antes.height / 2 - (depois.top + depois.height / 2);
-    img.style.transition = 'none';
-    img.style.transformOrigin = 'center center';
-    img.style.transform = `translate(${deltaX}px, ${deltaY}px) scale(${escalaX}, ${escalaY})`;
-
-    requestAnimationFrame(() => {
-      img.style.transition = 'transform .45s cubic-bezier(.2,.7,.3,1)';
-      img.style.transform = 'none';
-      img.addEventListener('transitionend', () => {
-        img.style.transition = '';
-        img.style.transformOrigin = '';
-      }, { once: true });
-    });
-  } catch(e) { /* pior caso: a logo aparece no login sem animação, mas aparece */ }
+  }, tempoRevelarLogin);
 }
 
 // Rede de segurança: se algo travar, a splash sai sozinha em 12s.
@@ -3171,35 +3245,14 @@ setTimeout(esconderSplash, 12000);
   renderDiaReferencia();
   calcularPeriodoPadrao();
 
-  // ── Retorno após o redirecionamento de autorização (mesma aba) ──
-  // Não chama aguardarConexaoEFinalizar aqui: aquela função redireciona de
-  // novo se o teste falhar, o que causaria loop. Aqui testamos com várias
-  // tentativas (o Apps Script demora na 1ª chamada) e só então decidimos.
+  // Retorno após redirecionamento de autorização
   const authPendente = localStorage.getItem('duc_financas_auth_pendente');
   if (authPendente){
     localStorage.removeItem('duc_financas_auth_pendente');
     mostrarTela(elTelaEntrada);
     const pendente = obterProvisionamentoPendente();
     if (pendente && pendente.urlExec){
-      const url = pendente.urlExec;
-      atualizarStatusEntrada('info', '6/6 — Finalizando a conexão (pode levar até 1 minuto na primeira vez)...');
-      let teste = null;
-      for (let tentativa = 0; tentativa < 8 && !(teste && teste.ok); tentativa++){
-        teste = await fetch(url + '?action=obterConfiguracoes').then(r => r.json()).catch(() => null);
-        if (teste && teste.ok) break;
-        await new Promise(r => setTimeout(r, 5000));
-      }
-      if (teste && teste.ok){
-        API_URL = url;
-        localStorage.setItem('duc_financas_api_url', url);
-        limparProvisionamentoPendente();
-        mostrarSucessoComUrl(url, elStatusEntrada);
-        await aposConectarAPI();
-      } else {
-        // Não redireciona automaticamente de novo — evita loop.
-        // Oferece o botão para o usuário tentar de novo por gesto próprio.
-        mostrarAvisoComUrl(url, elStatusEntrada);
-      }
+      await aguardarConexaoEFinalizar(pendente.urlExec, atualizarStatusEntrada, elStatusEntrada);
     }
     return;
   }
