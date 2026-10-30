@@ -1,7 +1,7 @@
 <!--
 ================================================================================
   Finanças.DuC — index.html
-  Versão atual: V00.048  (ver <title> na linha 6)
+  Versão atual: V00.047  (ver <title> na linha 6)
 
   🔗 LINK DO APP (GitHub Pages):
       https://ductrabalho.github.io/Financas.DuC/
@@ -179,7 +179,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Finanças.DuC V00.048</title>
+<title>Finanças.DuC V00.047</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://accounts.google.com/gsi/client" async defer onload="inicializarGoogleAuth()"></script>
@@ -2004,9 +2004,6 @@ function atualizarStatusAuto(tipo, texto){
 }
 
 function mostrarSucessoComUrl(url, el = elStatusAuto){
-  // Na tela de login (entrada/mesclagem) não mostra o aviso de sucesso com a
-  // URL: o app abre direto. Só as configurações (modal) continuam mostrando.
-  if (el !== elStatusAuto){ el.classList.add('oculto'); return; }
   el.classList.remove('oculto');
   el.className = 'status-auto status-sucesso';
   el.innerHTML = `
@@ -2041,7 +2038,7 @@ async function mostrarAvisoComUrl(url, el = elStatusAuto){
   } else {
     el.classList.remove('oculto');
     el.className = 'status-auto status-aviso';
-    el.innerHTML = `\u26a0\ufe0f Autoriza\u00e7\u00e3o necess\u00e1ria. Clique abaixo para abrir a p\u00e1gina do Google em nova aba, aceite todos os acessos pedidos e volte aqui \u2014 a conex\u00e3o \u00e9 verificada automaticamente.<br><div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; justify-content:center;"><button type="button" id="btn-abrir-autorizacao-manual">Abrir autoriza\u00e7\u00e3o</button></div>`;
+    el.innerHTML = `\u26a0\ufe0f Autoriza\u00e7\u00e3o necess\u00e1ria. Clique abaixo para abrir a p\u00e1gina do Google em nova aba, aceite todos os acessos pedidos e volte aqui \u2014 a conex\u00e3o \u00e9 verificada automaticamente.<br><div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;"><button type="button" id="btn-abrir-autorizacao-manual">Abrir autoriza\u00e7\u00e3o</button></div>`;
     document.getElementById('btn-abrir-autorizacao-manual').addEventListener('click', () => { window.__abaAutorizacaoDuC = window.open(url, 'ducAuth', 'width=600,height=700'); });
     aguardarAutorizacaoEmSegundoPlano(url, el);
   }
