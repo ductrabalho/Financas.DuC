@@ -1,7 +1,7 @@
 <!--
 ================================================================================
   Finanças.DuC — index.html
-  Versão atual: V00.046  (ver <title> na linha 6)
+  Versão atual: V00.047  (ver <title> na linha 6)
 
   🔗 LINK DO APP (GitHub Pages):
       https://ductrabalho.github.io/Financas.DuC/
@@ -179,7 +179,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Finanças.DuC V00.046</title>
+<title>Finanças.DuC V00.047</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://accounts.google.com/gsi/client" async defer onload="inicializarGoogleAuth()"></script>
@@ -610,7 +610,8 @@
   #tela-entrada{
     /* Ocupa exatamente a altura da tela (sem rolagem desnecessária).
        As margens negativas anulam o padding do .wrap; o padding
-       80px/24px mantém o conteúdo na mesma posição vertical de antes. */
+       0/84px mantém o conteúdo exatamente na mesma posição vertical
+       de antes (centro em 50vh - 42px). */
     box-sizing: border-box;
     min-height: 100vh;
     margin: -28px -20px -80px;
@@ -618,7 +619,7 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 80px 24px 24px;
+    padding: 0 24px 84px;
     position: relative;
     z-index: 10000; /* acima do #splash (9999): aparece por cima dele,
                         sem precisar que a splash saia da tela */
@@ -866,7 +867,7 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 80px 24px 24px;
+    padding: 0 24px 84px;
   }
 
   </style>
@@ -1045,7 +1046,16 @@
       var splash = document.getElementById('splash');
       var subtitulo = document.querySelector('#tela-entrada .logo-subtitulo');
       if (!splash || !subtitulo) return;
-      var topoSubtitulo = subtitulo.getBoundingClientRect().top + (window.scrollY || 0);
+      // O subtítulo tem um deslocamento (translateY) de entrada que varia
+      // durante a animação. Mede-se a posição SEM esse deslocamento e soma-se
+      // um valor fixo (14px), que reproduz exatamente a posição aprovada da
+      // logo — assim ela fica no mesmo ponto em qualquer zoom e em qualquer
+      // momento da animação.
+      var ty = 0;
+      var tr = getComputedStyle(subtitulo).transform;
+      var mt = tr && tr.match(/matrix\(([^)]+)\)/);
+      if (mt) ty = parseFloat(mt[1].split(',')[5]) || 0;
+      var topoSubtitulo = subtitulo.getBoundingClientRect().top + (window.scrollY || 0) - ty + 14;
       var padding = topoSubtitulo - MARGEM_LOGO_ACIMA_SUBTITULO;
       splash.style.paddingTop = Math.max(0, padding) + 'px';
     }
@@ -1054,6 +1064,18 @@
       posicionarLogoSplash(); // aplica já com a fonte disponível (evita 1º frame no lugar errado se possível)
     } else {
       posicionarLogoSplash(); // navegador sem Font Loading API: melhor esforço
+    }
+    /* Reposiciona sempre que o tamanho da área útil mudar — inclusive ao
+       dar ZOOM no navegador (que muda o tamanho da janela em px CSS).
+       Assim a logo mantém a mesma posição RELATIVA ao subtítulo em
+       qualquer zoom/resolução. */
+    window.addEventListener('resize', posicionarLogoSplash);
+    window.addEventListener('load', posicionarLogoSplash);
+    window.addEventListener('orientationchange', posicionarLogoSplash);
+    if (window.visualViewport) window.visualViewport.addEventListener('resize', posicionarLogoSplash);
+    if (window.ResizeObserver) {
+      var _telaEntrada = document.getElementById('tela-entrada');
+      if (_telaEntrada) new ResizeObserver(posicionarLogoSplash).observe(_telaEntrada);
     }
   </script>
 
@@ -3244,6 +3266,8 @@ setTimeout(esconderSplash, 12000);
   // Badge de versão: lê do <title>, evitando número duplicado no HTML.
   const elBadgeVersao = document.getElementById('badge-versao');
   if (elBadgeVersao) elBadgeVersao.textContent = APP_VERSAO;
+  // O badge muda a altura do conteúdo centralizado: reposiciona a logo.
+  if (typeof posicionarLogoSplash === 'function') posicionarLogoSplash();
 
   document.getElementById('t-data').value = formatarISOLocal(new Date());
   document.getElementById('le-vencimento').value = formatarISOLocal(new Date());
