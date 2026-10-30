@@ -1,7 +1,7 @@
 <!--
 ================================================================================
   Finanças.DuC — index.html
-  Versão atual: V00.058  (ver <title> na linha 6)
+  Versão atual: V00.059  (ver <title> na linha 6)
 
   🔗 LINK DO APP (GitHub Pages):
       https://ductrabalho.github.io/Financas.DuC/
@@ -180,7 +180,7 @@
 <meta charset="UTF-8">
 <!-- ALTERADO V00.058 — zoom do navegador bloqueado (ver script ANTI-ZOOM no fim) -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Finanças.DuC V00.058</title>
+<title>Finanças.DuC V00.059</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://accounts.google.com/gsi/client" async defer onload="inicializarGoogleAuth()"></script>
@@ -896,6 +896,24 @@
     left: 24px; right: 24px;
     top: 50%;
     transform: translateY(-50%);
+  }
+  /* ALTERADO V00.059 — aviso "Ativação necessária" fica DENTRO do cartão: ancorado no
+     rodapé (24px de folga), em bloco único, e os passos sobem para abrir espaço. */
+  #tela-entrada .action-card:has(#login-loading:not(.oculto)) #status-entrada.status-aviso{
+    display: block;
+    left: 24px; right: 24px;
+    width: auto;
+    top: auto; bottom: 24px;
+    min-height: 0;
+    padding: 12px 14px;
+    font-size: 0.78rem;
+    line-height: 1.45;
+    text-align: left;
+  }
+  #tela-entrada .action-card:has(#status-entrada.status-aviso:not(.oculto)) .login-passos{
+    top: 108px;
+    transform: none;
+    gap: 10px;
   }
   #tela-entrada .login-passos{ gap: 18px; }
   #tela-entrada .login-passo{ font-size: 1.05rem; }
