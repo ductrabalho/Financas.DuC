@@ -1,7 +1,7 @@
 <!--
 ================================================================================
   Finanças.DuC — index.html
-  Versão atual: V00.045  (ver <title> na linha 6)
+  Versão atual: V00.046  (ver <title> na linha 6)
 
   🔗 LINK DO APP (GitHub Pages):
       https://ductrabalho.github.io/Financas.DuC/
@@ -179,7 +179,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Finanças.DuC V00.045</title>
+<title>Finanças.DuC V00.046</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://accounts.google.com/gsi/client" async defer onload="inicializarGoogleAuth()"></script>
@@ -3082,13 +3082,18 @@ elFim.addEventListener('change', carregarTudo);
 
 // ---------- Inicialização ----------
 async function aposConectarAPI(){
-  mostrarTela(elAppConectado);
-  const config = await chamarAPI({ action: 'obterConfiguracoes' });
-  if (config && config.ok) diaReferenciaAtual = config.diaReferencia || 1;
-  renderDiaReferencia();
-  calcularPeriodoPadrao();
-  await carregarCategorias();
-  carregarTudo();
+  // Carrega tudo ANTES de mostrar o app: as animações de entrada (logo indo
+  // para o cabeçalho) só começam depois que o "Aguarde, processando..." fecha.
+  try {
+    const config = await chamarAPI({ action: 'obterConfiguracoes' });
+    if (config && config.ok) diaReferenciaAtual = config.diaReferencia || 1;
+    renderDiaReferencia();
+    calcularPeriodoPadrao();
+    await carregarCategorias();
+    await carregarTudo();
+  } finally {
+    mostrarTela(elAppConectado);
+  }
 }
 
 // ── ATUALIZAÇÃO AUTOMÁTICA ──────────────────────────────────────
