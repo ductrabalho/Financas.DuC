@@ -1,7 +1,7 @@
 <!--
 ================================================================================
   Finanças.DuC — index.html
-  Versão atual: V00.048  (ver <title> na linha 6)
+  Versão atual: V00.049  (ver <title> na linha 6)
 
   🔗 LINK DO APP (GitHub Pages):
       https://ductrabalho.github.io/Financas.DuC/
@@ -179,7 +179,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Finanças.DuC V00.048</title>
+<title>Finanças.DuC V00.049</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://accounts.google.com/gsi/client" async defer onload="inicializarGoogleAuth()"></script>
@@ -646,6 +646,7 @@
     width: min(340px, 90%);
     aspect-ratio: 5.1 / 1;
     margin: 0 auto 82px;
+    position: relative;
   }
   #tela-entrada .logo-subtitulo,
   #tela-entrada .logo-tag,
@@ -786,24 +787,22 @@
        • Entrada direta      → classe .com-fade : logo entra esmaecendo
        • Vindo da autorização → classe .sem-fade : logo já começa visível */
   #splash{
-    position: absolute; top: 0; left: 0; width: 100%; height: 100vh; z-index: 9999;
-    background: var(--bg);
-    display: flex; flex-direction: column;
-    align-items: center;
-    /* justify-content e padding-top são ajustados via JS (posicionarLogoSplash,
-       perto do fim do arquivo), medindo a posição real do subtítulo da
-       tela de login, para a logo ficar sempre um pouco acima dele —
-       em qualquer resolução, sem depender de um valor fixo chutado. */
-    justify-content: flex-start;
-    padding-top: 20vh;
-    gap: 26px;
+    /* A logo fica DENTRO do espaço reservado (.logo-grande) da tela de
+       login, ancorada por CSS: a posição relativa ao subtítulo, tag e card
+       é sempre a mesma — em qualquer zoom, janela ou estado do card — e já
+       sai certa no primeiro quadro, sem nenhum cálculo depois.
+       83px = ajuste fino para ficar exatamente na posição aprovada
+       (base da logo 9px acima do subtítulo). */
+    position: absolute;
+    left: 0; top: 83px;
+    width: 100%;
+    pointer-events: none;
   }
   #splash img{
-    max-width: 340px;
-    width: 90%;
+    width: 100%;
     height: auto;
     display: block;
-    margin: 0 auto;
+    margin: 0;
   }
 
   /* Modo 1 — entrada direta: logo entra esmaecendo, vindo de um pouco
@@ -874,27 +873,7 @@
 </head>
 <body>
 
-<!-- Splash de abertura: some assim que o app termina de carregar -->
-<div id="splash">
-  <img src="logo.png" alt="Finanças.DuC">
-</div>
-<script>
-  /* Decide o modo da splash ANTES da primeira pintura, para não haver
-     nenhum instante de fade indevido:
-       • Se o usuário está voltando da tela "Tudo pronto!" do Apps Script,
-         a logo já estava na tela — então entra SEM esmaecer (.sem-fade).
-       • Caso contrário é entrada direta — entra esmaecendo (.com-fade).
-     A saída é sempre esmaecendo, nos dois casos. */
-  (function definirModoSplash(){
-    var el = document.getElementById('splash');
-    if (!el) return;
-    var voltandoDaAutorizacao = false;
-    try {
-      voltandoDaAutorizacao = localStorage.getItem('duc_financas_auth_pendente') === '1';
-    } catch (e) {}
-    el.classList.add(voltandoDaAutorizacao ? 'sem-fade' : 'com-fade');
-  })();
-</script>
+
 
 <div class="loading-overlay" id="loading-overlay">
   <div class="loading-caixa">
@@ -1001,7 +980,29 @@
 
   <div id="tela-entrada">
     <div class="bg-orb"></div>
-    <div class="logo-grande"></div>
+    <div class="logo-grande">
+<!-- Logo de abertura: fica dentro do espaço reservado da tela de login -->
+<div id="splash">
+  <img src="logo.png" alt="Finanças.DuC">
+</div>
+<script>
+  /* Decide o modo da splash ANTES da primeira pintura, para não haver
+     nenhum instante de fade indevido:
+       • Se o usuário está voltando da tela "Tudo pronto!" do Apps Script,
+         a logo já estava na tela — então entra SEM esmaecer (.sem-fade).
+       • Caso contrário é entrada direta — entra esmaecendo (.com-fade).
+     A saída é sempre esmaecendo, nos dois casos. */
+  (function definirModoSplash(){
+    var el = document.getElementById('splash');
+    if (!el) return;
+    var voltandoDaAutorizacao = false;
+    try {
+      voltandoDaAutorizacao = localStorage.getItem('duc_financas_auth_pendente') === '1';
+    } catch (e) {}
+    el.classList.add(voltandoDaAutorizacao ? 'sem-fade' : 'com-fade');
+  })();
+</script>
+    </div>
     <div class="logo-subtitulo">Controle de pagamentos e cobranças</div>
     <div class="logo-tag">
       <span class="logo-versao" id="badge-versao"></span>
@@ -1030,54 +1031,6 @@
     </div>
   </div>
 
-  <script>
-    /* Posiciona a logo da splash um pouco ACIMA do subtítulo "Controle
-       de pagamentos e cobranças" da tela de login — em QUALQUER
-       resolução, medindo a posição real do subtítulo (que já está no
-       DOM, mesmo antes de aparecer) em vez de usar um valor fixo
-       chutado, que erraria em telas de tamanhos diferentes.
-
-       IMPORTANTE: a fonte Fraunces carrega de forma assíncrona
-       (Google Fonts, display=swap). Medir antes dela carregar dá a
-       métrica da fonte de fallback, que tem altura de linha diferente.
-       Por isso aguarda-se document.fonts.ready antes de medir. */
-    const MARGEM_LOGO_ACIMA_SUBTITULO = 90; // px de espaço entre a base da logo e o subtítulo
-    function posicionarLogoSplash(){
-      var splash = document.getElementById('splash');
-      var subtitulo = document.querySelector('#tela-entrada .logo-subtitulo');
-      if (!splash || !subtitulo) return;
-      // O subtítulo tem um deslocamento (translateY) de entrada que varia
-      // durante a animação. Mede-se a posição SEM esse deslocamento e soma-se
-      // um valor fixo (14px), que reproduz exatamente a posição aprovada da
-      // logo — assim ela fica no mesmo ponto em qualquer zoom e em qualquer
-      // momento da animação.
-      var ty = 0;
-      var tr = getComputedStyle(subtitulo).transform;
-      var mt = tr && tr.match(/matrix\(([^)]+)\)/);
-      if (mt) ty = parseFloat(mt[1].split(',')[5]) || 0;
-      var topoSubtitulo = subtitulo.getBoundingClientRect().top + (window.scrollY || 0) - ty + 14;
-      var padding = topoSubtitulo - MARGEM_LOGO_ACIMA_SUBTITULO;
-      splash.style.paddingTop = Math.max(0, padding) + 'px';
-    }
-    if (document.fonts && document.fonts.ready) {
-      document.fonts.ready.then(posicionarLogoSplash);
-      posicionarLogoSplash(); // aplica já com a fonte disponível (evita 1º frame no lugar errado se possível)
-    } else {
-      posicionarLogoSplash(); // navegador sem Font Loading API: melhor esforço
-    }
-    /* Reposiciona sempre que o tamanho da área útil mudar — inclusive ao
-       dar ZOOM no navegador (que muda o tamanho da janela em px CSS).
-       Assim a logo mantém a mesma posição RELATIVA ao subtítulo em
-       qualquer zoom/resolução. */
-    window.addEventListener('resize', posicionarLogoSplash);
-    window.addEventListener('load', posicionarLogoSplash);
-    window.addEventListener('orientationchange', posicionarLogoSplash);
-    if (window.visualViewport) window.visualViewport.addEventListener('resize', posicionarLogoSplash);
-    if (window.ResizeObserver) {
-      var _telaEntrada = document.getElementById('tela-entrada');
-      if (_telaEntrada) new ResizeObserver(posicionarLogoSplash).observe(_telaEntrada);
-    }
-  </script>
 
   <div id="tela-conta-nao-encontrada" class="oculto tela-sec">
     <div class="entrada-caixa">
@@ -2039,12 +1992,45 @@ async function mostrarAvisoComUrl(url, el = elStatusAuto){
     mostrarSucessoComUrl(url, el);
     await aposConectarAPI();
   } else {
-    el.classList.remove('oculto');
-    el.className = 'status-auto status-aviso';
-    el.innerHTML = `\u26a0\ufe0f Autoriza\u00e7\u00e3o necess\u00e1ria. Clique abaixo para abrir a p\u00e1gina do Google em nova aba, aceite todos os acessos pedidos e volte aqui \u2014 a conex\u00e3o \u00e9 verificada automaticamente.<br><div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; justify-content:center;"><button type="button" id="btn-abrir-autorizacao-manual">Abrir autoriza\u00e7\u00e3o</button></div>`;
-    document.getElementById('btn-abrir-autorizacao-manual').addEventListener('click', () => { window.__abaAutorizacaoDuC = window.open(url, 'ducAuth', 'width=600,height=700'); });
+    mostrarAvisoAutorizacao(url, el);
     aguardarAutorizacaoEmSegundoPlano(url, el);
   }
+}
+
+// Aviso ANTES de abrir a autorização. A janela só abre quando o usuário
+// clica no botão (abrir direto pelo clique evita o bloqueio silencioso).
+function mostrarAvisoAutorizacao(url, el){
+  el.classList.remove('oculto');
+  el.className = 'status-auto status-aviso';
+  el.innerHTML = `\u26a0\ufe0f <b>Autoriza\u00e7\u00e3o necess\u00e1ria.</b><br>
+    Clique abaixo para abrir a p\u00e1gina do Google.<br>
+    O navegador pode pedir permiss\u00e3o para pop-ups. Permita para continuar.<br>
+    Aceite todos os acessos pedidos e volte aqui.<br>
+    A conex\u00e3o \u00e9 verificada automaticamente.<br>
+    <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; justify-content:center;"><button type="button" id="btn-abrir-autorizacao-manual">Abrir autoriza\u00e7\u00e3o</button></div>`;
+  document.getElementById('btn-abrir-autorizacao-manual').addEventListener('click', () => abrirPopupAutorizacao(url, el));
+}
+
+// Chamada diretamente pelo clique do usuário, sem nenhuma espera antes.
+function abrirPopupAutorizacao(url, el){
+  const aba = window.open(url, 'ducAuth', 'width=600,height=700');
+  if (!aba || aba.closed){
+    mostrarAvisoPopupBloqueado(url, el);
+    return;
+  }
+  window.__abaAutorizacaoDuC = aba;
+}
+
+function mostrarAvisoPopupBloqueado(url, el){
+  el.classList.remove('oculto');
+  el.className = 'status-auto status-aviso';
+  el.innerHTML = `\u26a0\ufe0f <b>Pop-up bloqueado.</b><br>
+    Clique no \u00edcone de pop-up bloqueado, na barra de endere\u00e7o.<br>
+    Escolha "Sempre permitir pop-ups e redirecionamentos".<br>
+    Clique em "Conclu\u00eddo".<br>
+    Depois clique em "Tentar de novo".<br>
+    <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; justify-content:center;"><button type="button" id="btn-abrir-autorizacao-manual">Tentar de novo</button></div>`;
+  document.getElementById('btn-abrir-autorizacao-manual').addEventListener('click', () => abrirPopupAutorizacao(url, el));
 }
 
 // Fica testando a conexão em segundo plano enquanto o usuário resolve a
@@ -2108,44 +2094,9 @@ function aguardarAutorizacaoEmSegundoPlano(url, el = elStatusAuto){
 }
 
 async function aguardarConexaoEFinalizar(url, statusFn = atualizarStatusAuto, el = elStatusAuto){
-  // ── Etapa 5: abrir a página de autorização do Google e esperar o aceite ──
-  statusFn('info', '5/6 — Abrindo a página de autorização. Aceite TODOS os acessos que o Google pedir e depois volte pra esta aba...');
-  const abaAutorizacao = window.open(url, 'ducAuth', 'width=600,height=700');
-  window.__abaAutorizacaoDuC = abaAutorizacao;
-  if (!abaAutorizacao){
-    // Popup bloqueado pelo navegador: mostra o aviso com botão "Continuar" (gesto do usuário)
-    // e deixa o monitor em segundo plano finalizar quando a autorização for concluída.
-    mostrarAvisoComUrl(url, el);
-    return;
-  }
-
-  statusFn('info', '6/6 — Testando a conexão (pode levar até 1 minuto na primeira vez)...');
-  let teste = null;
-  for (let tentativa = 0; tentativa < 6 && !(teste && teste.ok); tentativa++){
-    await new Promise(r => setTimeout(r, 6000));
-    teste = await fetch(url + '?action=obterConfiguracoes').then(r => r.json()).catch(() => null);
-  }
-  if (teste && teste.ok){
-    // ── Fechar a aba de autorização automaticamente ──
-    // Navega a aba para uma data URL que executa window.close() — o método
-    // mais confiável no mobile Chrome mesmo com origem diferente
-    try {
-      if (abaAutorizacao && !abaAutorizacao.closed){
-        abaAutorizacao.location.href = 'data:text/html,<scr'+'ipt>window.close()<\/scr'+'ipt>';
-        setTimeout(()=>{ try{ abaAutorizacao.close(); }catch(e){} }, 800);
-      }
-    } catch(e){
-      try { window.open('about:blank','ducAuth').close(); } catch(e2){}
-    }
-    window.__abaAutorizacaoDuC = null;
-    API_URL = url;
-    localStorage.setItem('duc_financas_api_url', url);
-    limparProvisionamentoPendente();
-    mostrarSucessoComUrl(url, el);
-    await aposConectarAPI();
-  } else {
-    mostrarAvisoComUrl(url, el);
-  }
+  // Se o script já está autorizado, conecta direto. Se não, mostra o aviso e
+  // espera o clique do usuário (a janela nunca abre sozinha, pois seria bloqueada).
+  await mostrarAvisoComUrl(url, el);
 }
 
 if (elBtnAuto) elBtnAuto.addEventListener('click', async () => {
@@ -2227,6 +2178,86 @@ async function buscarDeployAtivo(scriptId){
   return null;
 }
 
+// ---------- Reaproveitar o script já vinculado à planilha ----------
+// O id do script fica guardado na própria planilha (metadado oculto), assim
+// qualquer navegador novo reencontra o mesmo script e a mesma URL.
+const CHAVE_META_SCRIPT = 'duc_financas_script_id';
+
+async function lerScriptGuardadoNaPlanilha(spreadsheetId){
+  try {
+    const r = await chamarGoogleAPI(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/developerMetadata:search`, {
+      method: 'POST',
+      body: { dataFilters: [{ developerMetadataLookup: { metadataKey: CHAVE_META_SCRIPT } }] }
+    });
+    const m = (r.matchedDeveloperMetadata || [])[0];
+    return (m && m.developerMetadata && m.developerMetadata.metadataValue) || null;
+  } catch(e){ return null; }
+}
+
+async function guardarScriptNaPlanilha(spreadsheetId, scriptId){
+  try {
+    await chamarGoogleAPI(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`, {
+      method: 'POST',
+      body: { requests: [{ createDeveloperMetadata: { developerMetadata: {
+        metadataKey: CHAVE_META_SCRIPT, metadataValue: scriptId,
+        location: { spreadsheet: true }, visibility: 'DOCUMENT'
+      } } }] }
+    });
+  } catch(e){ /* melhor esforço: sem isso só perde o reaproveitamento em outro navegador */ }
+}
+
+async function validarScriptExistente(scriptId){
+  try {
+    const r = await chamarGoogleAPI(`https://script.googleapis.com/v1/projects/${scriptId}`);
+    return !!r.scriptId;
+  } catch(e){ return false; }
+}
+
+async function buscarDeployAtivoInfo(scriptId){
+  try {
+    const r = await chamarGoogleAPI(`https://script.googleapis.com/v1/projects/${scriptId}/deployments`);
+    for (const d of (r.deployments || [])){
+      const ep = (d.entryPoints || []).find(e => e.webApp);
+      if (ep) return { id: d.deploymentId, url: ep.webApp.url };
+    }
+  } catch(e){}
+  return null;
+}
+
+// Atualiza SÓ o código do script existente (e republica na MESMA implantação,
+// então a URL não muda). Se o código já é o mais novo, não faz nada.
+async function atualizarCodigoSeDiferente(scriptId, spreadsheetId, statusFn){
+  try {
+    const codigoNovo = CODE_GS.replace("var SPREADSHEET_ID = '';", "var SPREADSHEET_ID = '" + spreadsheetId + "';");
+    const atual = await chamarGoogleAPI(`https://script.googleapis.com/v1/projects/${scriptId}/content`);
+    const arquivos = atual.files || [];
+    const arqCodigo = arquivos.find(f => f.name === 'Code');
+    if (arqCodigo && arqCodigo.source === codigoNovo) return false;
+    const deploy = await buscarDeployAtivoInfo(scriptId);
+    if (!deploy || !deploy.id) return false;
+    statusFn('info', '4/6 — Atualizando o código do script...');
+    const manifesto = arquivos.find(f => f.name === 'appsscript');
+    await chamarGoogleAPI(`https://script.googleapis.com/v1/projects/${scriptId}/content`, {
+      method: 'PUT',
+      body: { files: [
+        { name: 'Code', type: 'SERVER_JS', source: codigoNovo },
+        manifesto || { name: 'appsscript', type: 'JSON', source: JSON.stringify({
+          timeZone: 'America/Sao_Paulo', exceptionLogging: 'STACKDRIVER', runtimeVersion: 'V8',
+          oauthScopes: ['https://www.googleapis.com/auth/spreadsheets','https://www.googleapis.com/auth/script.scriptapp'],
+          webapp: { executeAs: 'USER_DEPLOYING', access: 'ANYONE_ANONYMOUS' } }) }
+      ]}
+    });
+    const versao = await chamarGoogleAPI(`https://script.googleapis.com/v1/projects/${scriptId}/versions`, {
+      method: 'POST', body: { description: 'Atualização automática' }
+    });
+    await chamarGoogleAPI(`https://script.googleapis.com/v1/projects/${scriptId}/deployments/${deploy.id}`, {
+      method: 'PUT',
+      body: { deploymentConfig: { scriptId, versionNumber: versao.versionNumber, manifestFileName: 'appsscript', description: 'Atualização automática' } }
+    });
+    return true;
+  } catch(e){ return false; } // se falhar, segue com o código que já existe
+}
+
 async function rodarProvisionamento(spreadsheetIdExistente, statusFn = atualizarStatusAuto, el = elStatusAuto){
   try {
     let pendente = obterProvisionamentoPendente() || {};
@@ -2263,7 +2294,17 @@ async function rodarProvisionamento(spreadsheetIdExistente, statusFn = atualizar
     }
     const spreadsheetId = pendente.spreadsheetId;
 
-    // ── Etapa 2: criar script só se não existe ──
+    // ── Etapa 2: reaproveitar o script da planilha; criar só se não existe ──
+    let scriptVeioDaPlanilha = false;
+    if (!pendente.scriptId){
+      const guardado = await lerScriptGuardadoNaPlanilha(spreadsheetId);
+      if (guardado && await validarScriptExistente(guardado)){
+        pendente.scriptId = guardado;
+        scriptVeioDaPlanilha = true;
+        salvarProvisionamentoPendente(pendente);
+      }
+    }
+    let scriptReaproveitado = false;
     if (!pendente.scriptId){
       statusFn('info', '3/6 — Criando o script vinculado à planilha...');
       const projeto = await chamarGoogleAPI('https://script.googleapis.com/v1/projects', {
@@ -2272,8 +2313,11 @@ async function rodarProvisionamento(spreadsheetIdExistente, statusFn = atualizar
       });
       pendente.scriptId = projeto.scriptId;
       salvarProvisionamentoPendente(pendente);
+      await guardarScriptNaPlanilha(spreadsheetId, projeto.scriptId);
     } else {
       statusFn('info', '3/6 — Script já existente, reutilizando...');
+      scriptReaproveitado = true;
+      if (!scriptVeioDaPlanilha) await guardarScriptNaPlanilha(spreadsheetId, pendente.scriptId);
     }
     const scriptId = pendente.scriptId;
 
@@ -2285,6 +2329,8 @@ async function rodarProvisionamento(spreadsheetIdExistente, statusFn = atualizar
         salvarProvisionamentoPendente(pendente);
       }
     }
+
+    const deployJaExistia = !!pendente.urlExec;
 
     // ── Etapa 3: deploy só se não existe ──
     if (!pendente.urlExec){
@@ -2324,6 +2370,11 @@ async function rodarProvisionamento(spreadsheetIdExistente, statusFn = atualizar
       statusFn('info', '4/6 — Deploy já existente, reutilizando...');
     }
 
+    // Script reaproveitado: atualiza só o código (a URL continua a mesma).
+    if (scriptReaproveitado && deployJaExistia){
+      await atualizarCodigoSeDiferente(scriptId, spreadsheetId, statusFn);
+    }
+
     inputConfigUrl.value = pendente.urlExec;
     await aguardarConexaoEFinalizar(pendente.urlExec, statusFn, el);
   } catch (err) {
@@ -2356,15 +2407,16 @@ function tratarApiAppsScriptDesativada(statusFn, el, spreadsheetIdExistente){
   el.className = 'status-auto status-aviso';
   el.style.textAlign = 'left';
   el.innerHTML = `
-    <b>Falta um passo para continuar</b><br><br>
-    1. Para continuar, é preciso ativar o Google Apps Script API na conta Google que fez login.<br>
-    2. Basta abrir a página de configurações do Apps Script e ligar a opção "API Google Apps Script".<br>
-    3. Depois de ativar, esperar cerca de 2 minutos e tentar de novo.<br><br>
-    <a id="link-ativar-apps-script-api" href="${URL_ATIVAR_APPS_SCRIPT_API}" target="_blank" rel="noopener" style="color:inherit; word-break:break-all;">${URL_ATIVAR_APPS_SCRIPT_API}</a><br><br>
-    <span style="opacity:.8;">Ao ativar, o site continua sozinho.</span>`;
+    <b>Ativação necessária.</b><br>
+    Ative o Google Apps Script API para continuar.<br>
+    Clique abaixo para abrir a página.<br>
+    Ligue a opção "API Google Apps Script".<br>
+    A conexão continua automaticamente.<br><br>
+    <a id="link-ativar-apps-script-api" href="${URL_ATIVAR_APPS_SCRIPT_API}" target="_blank" rel="noopener" style="color:inherit; word-break:break-all;">${URL_ATIVAR_APPS_SCRIPT_API}</a>`;
   document.getElementById('link-ativar-apps-script-api').addEventListener('click', (ev) => {
-    // Guarda a referência da aba para poder fechá-la quando tudo estiver pronto.
-    const aba = window.open(URL_ATIVAR_APPS_SCRIPT_API, 'ducApiAppsScript');
+    // Abre como janela popup (igual à janela de login do Google) e guarda a
+    // referência para fechá-la sozinha quando tudo estiver pronto.
+    const aba = window.open(URL_ATIVAR_APPS_SCRIPT_API, 'ducApiAppsScript', 'width=600,height=700');
     if (aba){ ev.preventDefault(); window.__abaApiAppsScript = aba; }
   });
   iniciarMonitorApiAppsScript(statusFn, el, spreadsheetIdExistente);
@@ -3269,8 +3321,6 @@ setTimeout(esconderSplash, 12000);
   // Badge de versão: lê do <title>, evitando número duplicado no HTML.
   const elBadgeVersao = document.getElementById('badge-versao');
   if (elBadgeVersao) elBadgeVersao.textContent = APP_VERSAO;
-  // O badge muda a altura do conteúdo centralizado: reposiciona a logo.
-  if (typeof posicionarLogoSplash === 'function') posicionarLogoSplash();
 
   document.getElementById('t-data').value = formatarISOLocal(new Date());
   document.getElementById('le-vencimento').value = formatarISOLocal(new Date());
