@@ -1,7 +1,7 @@
 <!--
 ================================================================================
   Finanças.DuC — index.html
-  Versão atual: V00.049  (ver <title> na linha 6)
+  Versão atual: V00.050  (ver <title> na linha 6)
 
   🔗 LINK DO APP (GitHub Pages):
       https://ductrabalho.github.io/Financas.DuC/
@@ -179,7 +179,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Finanças.DuC V00.049</title>
+<title>Finanças.DuC V00.050</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://accounts.google.com/gsi/client" async defer onload="inicializarGoogleAuth()"></script>
@@ -610,8 +610,8 @@
   #tela-entrada{
     /* Ocupa exatamente a altura da tela (sem rolagem desnecessária).
        As margens negativas anulam o padding do .wrap; o padding
-       0/84px mantém o conteúdo exatamente na mesma posição vertical
-       de antes (centro em 50vh - 42px). */
+       0/126px mantém o conteúdo na mesma posição vertical relativa
+       (centro em 50vh - 63px), já na escala 1,5x da tela de login. */
     box-sizing: border-box;
     min-height: 100vh;
     margin: -28px -20px -80px;
@@ -619,7 +619,7 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 0 24px 84px;
+    padding: 0 24px 126px;
     position: relative;
     z-index: 10000; /* acima do #splash (9999): aparece por cima dele,
                         sem precisar que a splash saia da tela */
@@ -647,6 +647,14 @@
     aspect-ratio: 5.1 / 1;
     margin: 0 auto 82px;
     position: relative;
+  }
+  /* Tela de login em escala 1,5x (logo, subtítulo, tag e card crescem juntos,
+     mantendo todas as proporções e distâncias entre eles). */
+  #tela-entrada .logo-grande,
+  #tela-entrada .logo-subtitulo,
+  #tela-entrada .logo-tag,
+  #tela-entrada .action-card{
+    zoom: 1.5;
   }
   #tela-entrada .logo-subtitulo,
   #tela-entrada .logo-tag,
@@ -716,7 +724,7 @@
   }
   #tela-entrada .action-desc{
     color: var(--text-dim);
-    font-size: 0.82rem;
+    font-size: 0.64rem; /* menor: "Use sua conta Google para acessar suas finanças." cabe em uma linha */
     line-height: 1.6;
     text-align: center;
     margin-bottom: 20px;
@@ -1011,7 +1019,7 @@
     <div class="action-card">
       <div id="login-default-content">
         <p class="entrada-texto action-desc">
-          Use sua conta Google para acessar suas finanças.<br>
+          <span style="white-space:nowrap;">Use sua conta Google para acessar suas finanças.</span><br>
           Se ainda não tiver um banco de dados, criamos um pra você na hora.
         </p>
         <div class="action-divisor"><span>entrar</span></div>
@@ -2094,9 +2102,56 @@ function aguardarAutorizacaoEmSegundoPlano(url, el = elStatusAuto){
 }
 
 async function aguardarConexaoEFinalizar(url, statusFn = atualizarStatusAuto, el = elStatusAuto){
-  // Se o script já está autorizado, conecta direto. Se não, mostra o aviso e
-  // espera o clique do usuário (a janela nunca abre sozinha, pois seria bloqueada).
-  await mostrarAvisoComUrl(url, el);
+  // Já autorizado (ex.: script reaproveitado)? Conecta direto, sem abrir janela.
+  const testePrevio = await fetch(url + '?action=obterConfiguracoes').then(r => r.json()).catch(() => null);
+  if (testePrevio && testePrevio.ok){
+    API_URL = url;
+    localStorage.setItem('duc_financas_api_url', url);
+    limparProvisionamentoPendente();
+    mostrarSucessoComUrl(url, el);
+    await aposConectarAPI();
+    return;
+  }
+
+  // ── Etapa 5: abre a página de autorização AUTOMATICAMENTE (como antes) ──
+  statusFn('info', '5/6 — Abrindo a página de autorização. Aceite TODOS os acessos que o Google pedir e depois volte pra esta aba...');
+  const abaAutorizacao = window.open(url, 'ducAuth', 'width=600,height=700');
+  window.__abaAutorizacaoDuC = abaAutorizacao;
+  if (!abaAutorizacao){
+    // Popup bloqueado pelo navegador: explica os passos e mostra "Tentar de novo".
+    // O monitor em segundo plano finaliza sozinho quando a autorização for concluída.
+    mostrarAvisoPopupBloqueado(url, el);
+    aguardarAutorizacaoEmSegundoPlano(url, el);
+    return;
+  }
+
+  statusFn('info', '6/6 — Testando a conexão (pode levar até 1 minuto na primeira vez)...');
+  let teste = null;
+  for (let tentativa = 0; tentativa < 6 && !(teste && teste.ok); tentativa++){
+    await new Promise(r => setTimeout(r, 6000));
+    teste = await fetch(url + '?action=obterConfiguracoes').then(r => r.json()).catch(() => null);
+  }
+  if (teste && teste.ok){
+    // ── Fechar a aba de autorização automaticamente ──
+    // Navega a aba para uma data URL que executa window.close() — o método
+    // mais confiável no mobile Chrome mesmo com origem diferente
+    try {
+      if (abaAutorizacao && !abaAutorizacao.closed){
+        abaAutorizacao.location.href = 'data:text/html,<scr'+'ipt>window.close()<\/scr'+'ipt>';
+        setTimeout(()=>{ try{ abaAutorizacao.close(); }catch(e){} }, 800);
+      }
+    } catch(e){
+      try { window.open('about:blank','ducAuth').close(); } catch(e2){}
+    }
+    window.__abaAutorizacaoDuC = null;
+    API_URL = url;
+    localStorage.setItem('duc_financas_api_url', url);
+    limparProvisionamentoPendente();
+    mostrarSucessoComUrl(url, el);
+    await aposConectarAPI();
+  } else {
+    mostrarAvisoComUrl(url, el);
+  }
 }
 
 if (elBtnAuto) elBtnAuto.addEventListener('click', async () => {
